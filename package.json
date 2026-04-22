@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "register": "tsx --env-file=.env register-entity-secret.ts",
     "create-wallet": "tsx --env-file=.env create-wallet.ts",
-    "register-circle": "tsx --env-file=.env register-with-circle.ts"
+    "register-circle": "tsx --env-file=.env register-with-circle.ts",
+    "deploy": "tsx --env-file=.env deploy-contract.ts",
+    "send": "tsx --env-file=.env send-usdc.ts"
   },
   "keywords": [],
   "author": "",
@@ -15,7 +17,8 @@
   "type": "module",
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^10.3.0",
-    "node-forge": "^1.4.0"
+    "node-forge": "^1.4.0",
+    "solc": "^0.8.20"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
