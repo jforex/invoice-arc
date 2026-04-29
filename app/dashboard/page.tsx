@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { 
   TrendingUp, 
@@ -246,10 +247,13 @@ function InvoiceTable({ invoices }: { invoices: any[] }) {
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-gray-900">Recent Invoices</h3>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
+            <Link
+              href="/dashboard/invoices/create"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
               <Plus className="w-4 h-4" />
               New Invoice
-            </button>
+            </Link>
           </div>
         </div>
         <div className="p-12 text-center">
@@ -258,10 +262,13 @@ function InvoiceTable({ invoices }: { invoices: any[] }) {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No invoices yet</h3>
           <p className="text-gray-600 mb-6">Create your first invoice to get started</p>
-          <button className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center gap-2">
+          <Link
+            href="/dashboard/invoices/create"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+          >
             <Plus className="w-5 h-5" />
             Create Invoice
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -272,10 +279,13 @@ function InvoiceTable({ invoices }: { invoices: any[] }) {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-gray-900">Recent Invoices</h3>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
+          <Link
+            href="/dashboard/invoices/create"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
             <Plus className="w-4 h-4" />
             New Invoice
-          </button>
+          </Link>
         </div>
       </div>
       
@@ -367,10 +377,13 @@ export default async function Dashboard() {
               </h1>
               <p className="text-gray-600 mt-1">Welcome back! Here's what's happening today.</p>
             </div>
-            <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-600 transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2">
+            <Link
+              href="/dashboard/invoices/create"
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-600 transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2"
+            >
               <Plus className="w-5 h-5" />
               Create Invoice
-            </button>
+            </Link>
           </div>
         </div>
       </div>
