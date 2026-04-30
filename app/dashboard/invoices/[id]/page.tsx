@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { pdf } from '@react-pdf/renderer';
+import InvoicePDF from '@/components/InvoicePDF';
 import { 
   ArrowLeft, 
   Download, 
@@ -46,6 +48,7 @@ export default function InvoiceDetail() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     loadInvoice();
@@ -77,6 +80,38 @@ export default function InvoiceDetail() {
       console.error('Error loading invoice:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+
+    setDownloading(true);
+    try {
+      // Create PDF blob
+      const blob = await pdf(
+        <InvoicePDF 
+          invoice={{
+            ...invoice,
+            items: items
+          }} 
+        />
+      ).toBlob();
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${invoice.invoice_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -172,11 +207,12 @@ export default function InvoiceDetail() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => alert('PDF download coming soon!')}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
+                onClick={handleDownloadPDF}
+                disabled={downloading}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" />
-                Download PDF
+                {downloading ? 'Generating...' : 'Download PDF'}
               </button>
               <button
                 onClick={() => alert('Email sending coming soon!')}
