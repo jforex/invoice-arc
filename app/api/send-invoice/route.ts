@@ -46,8 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate PDF buffer - TypeScript type assertion needed here
-    // @ts-expect-error - pdf() accepts this component but TypeScript can't infer the correct type
+    // Generate PDF buffer
     const pdfBlob = await pdf(
       React.createElement(InvoicePDF, { 
         invoice: { ...invoice, items: items || [] } 
@@ -72,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Send email with Resend
     const { data, error } = await resend.emails.send({
-      from: 'Christian Design Studio <onboarding@resend.dev>', // Use resend test domain for now
+      from: 'Christian Design Studio <onboarding@resend.dev>',
       to: [invoice.client_email],
       subject: `Invoice ${invoice.invoice_number} from Christian Design Studio`,
       html: InvoiceEmailTemplate({
