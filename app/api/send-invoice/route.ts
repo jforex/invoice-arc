@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { supabase } from '@/lib/supabase';
 import { InvoiceEmailTemplate } from '@/lib/InvoiceEmailTemplate';
-import { renderToBuffer } from '@react-pdf/renderer';
+import { pdf } from '@react-pdf/renderer';
 import InvoicePDF from '@/components/InvoicePDF';
 import React from 'react';
 
@@ -46,12 +46,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate PDF buffer using React.createElement instead of JSX
-    const pdfBuffer = await renderToBuffer(
+    // Generate PDF buffer
+    const pdfBlob = await pdf(
       React.createElement(InvoicePDF, { 
         invoice: { ...invoice, items: items || [] } 
       })
-    );
+    ).toBlob();
+
+    // Convert blob to buffer
+    const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
 
     // Format dates for email
     const formatDate = (dateString: string) => {
