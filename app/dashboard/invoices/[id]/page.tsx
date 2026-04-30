@@ -49,6 +49,7 @@ export default function InvoiceDetail() {
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     loadInvoice();
@@ -112,6 +113,41 @@ export default function InvoiceDetail() {
       alert('Failed to generate PDF. Please try again.');
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!invoice) return;
+
+    const confirmed = confirm(
+      `Send invoice ${invoice.invoice_number} to ${invoice.client_email}?`
+    );
+    if (!confirmed) return;
+
+    setSending(true);
+    try {
+      const response = await fetch('/api/send-invoice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      alert(`Invoice sent successfully to ${invoice.client_email}!`);
+    } catch (error) {
+      console.error('Error sending email:', error);
+      alert(error instanceof Error ? error.message : 'Failed to send email. Please try again.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -215,11 +251,12 @@ export default function InvoiceDetail() {
                 {downloading ? 'Generating...' : 'Download PDF'}
               </button>
               <button
-                onClick={() => alert('Email sending coming soon!')}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
+                onClick={handleSendEmail}
+                disabled={sending}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Mail className="w-4 h-4" />
-                Send Email
+                {sending ? 'Sending...' : 'Send Email'}
               </button>
               {invoice.status === 'pending' && (
                 <button
