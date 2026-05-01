@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate PDF buffer
-    const pdfBlob = await pdf(
-      React.createElement(InvoicePDF, { 
-        invoice: { ...invoice, items: items || [] } 
-      })
-    ).toBlob();
+    // Generate PDF buffer - using type assertion to bypass TypeScript strictness
+    const pdfElement = React.createElement(InvoicePDF, { 
+      invoice: { ...invoice, items: items || [] } 
+    }) as any;
+    
+    const pdfBlob = await pdf(pdfElement).toBlob();
 
     // Convert blob to buffer
     const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
