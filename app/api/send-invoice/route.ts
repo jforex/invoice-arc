@@ -6,8 +6,6 @@ import { pdf } from '@react-pdf/renderer';
 import InvoicePDF from '@/components/InvoicePDF';
 import React from 'react';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(request: NextRequest) {
   try {
     const { invoiceId } = await request.json();
@@ -68,6 +66,9 @@ export async function POST(request: NextRequest) {
     // Create invoice URL (for production, use your actual domain)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const invoiceUrl = `${baseUrl}/dashboard/invoices/${invoiceId}`;
+
+    // Initialize Resend inside the function (not at module level) to avoid build-time errors
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     // Send email with Resend
     const { data, error } = await resend.emails.send({
