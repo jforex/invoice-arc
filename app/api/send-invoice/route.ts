@@ -63,11 +63,13 @@ export async function POST(request: NextRequest) {
       });
     };
 
-    // Create invoice URL (for production, use your actual domain)
+    // Create PUBLIC invoice URL using public_token
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const invoiceUrl = `${baseUrl}/dashboard/invoices/${invoiceId}`;
+    const invoiceUrl = invoice.public_token 
+      ? `${baseUrl}/invoice/${invoice.public_token}`
+      : `${baseUrl}/dashboard/invoices/${invoiceId}`;
 
-    // Initialize Resend inside the function (not at module level) to avoid build-time errors
+    // Initialize Resend inside the function to avoid build-time errors
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // Send email with Resend
