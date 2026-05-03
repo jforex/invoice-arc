@@ -89,7 +89,7 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
     
     setDownloading(true);
     try {
-      const pdfElement = React.createElement(InvoicePDF, { invoice }) as any;
+      const pdfElement = React.createElement(InvoicePDF as any, { invoice }) as any;
       const blob = await pdf(pdfElement).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

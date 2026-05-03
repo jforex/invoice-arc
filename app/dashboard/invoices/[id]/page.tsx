@@ -79,7 +79,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     if (!invoice) return;
     setDownloading(true);
     try {
-      const pdfElement = React.createElement(InvoicePDF, { invoice }) as any;
+      const pdfElement = React.createElement(InvoicePDF as any, { invoice }) as any;
       const blob = await pdf(pdfElement).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
