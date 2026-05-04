@@ -139,6 +139,11 @@ export default function AnalyticsPage() {
     });
   };
 
+  // Tooltip formatter helper - handles type safety
+  const tooltipFormatter = (value: any): string => {
+    return formatCurrency(Number(value) || 0, defaultCurrency);
+  };
+
   const getRevenueByDate = () => {
     const grouped: { [key: string]: number } = {};
     
@@ -338,7 +343,6 @@ export default function AnalyticsPage() {
                   <p className="text-sm text-gray-500 mt-1">Daily revenue over time</p>
                 </div>
                 
-                {/* Chart Type Toggle */}
                 <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                   <button
                     onClick={() => setChartType('bar')}
@@ -373,7 +377,7 @@ export default function AnalyticsPage() {
                       <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
                       <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
                       <Tooltip
-                        formatter={(value: number) => formatCurrency(value, defaultCurrency)}
+                        formatter={tooltipFormatter}
                         contentStyle={{
                           backgroundColor: '#fff',
                           border: '1px solid #e5e7eb',
@@ -392,7 +396,7 @@ export default function AnalyticsPage() {
                       <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
                       <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
                       <Tooltip
-                        formatter={(value: number) => formatCurrency(value, defaultCurrency)}
+                        formatter={tooltipFormatter}
                         contentStyle={{
                           backgroundColor: '#fff',
                           border: '1px solid #e5e7eb',
