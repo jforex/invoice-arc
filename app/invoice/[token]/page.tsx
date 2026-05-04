@@ -279,7 +279,7 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
               }}
             >
               <div className="flex items-start gap-3">
-                <div className="text-2xl" style={{ color: brandColor }}>💳</div>
+                <div className="text-2xl" style={{ color: brandColor }}> </div>
                 <div>
                   <h3 className="font-semibold mb-1" style={{ color: brandColor }}>Fast Payment Options</h3>
                   <p className="text-sm" style={{ color: brandColor }}>Pay with USDC • 0% fees • 10-second settlement</p>

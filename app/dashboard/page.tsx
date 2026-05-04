@@ -12,7 +12,8 @@ import {
   TrendingUp,
   Plus,
   Eye,
-  Settings
+  Settings,
+  BarChart3
 } from 'lucide-react';
 
 interface Invoice {
@@ -51,7 +52,6 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // Fetch company default currency
       const { data: company } = await supabase
         .from('companies')
         .select('default_currency')
@@ -62,7 +62,6 @@ export default function Dashboard() {
         setDefaultCurrency(company.default_currency);
       }
 
-      // Fetch invoices
       const { data: invoicesData } = await supabase
         .from('invoices')
         .select('*')
@@ -140,6 +139,13 @@ export default function Dashboard() {
                 Create Invoice
               </Link>
               <Link
+                href="/analytics"
+                className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                title="Analytics"
+              >
+                <BarChart3 className="w-5 h-5" />
+              </Link>
+              <Link
                 href="/settings"
                 className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 title="Settings"
@@ -209,13 +215,22 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Recent Invoices</h2>
-            <Link
-              href="/dashboard/invoices/create"
-              className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              New Invoice
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/analytics"
+                className="px-4 py-2 bg-purple-50 text-purple-600 rounded-lg font-medium hover:bg-purple-100 transition-colors flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                View Analytics
+              </Link>
+              <Link
+                href="/dashboard/invoices/create"
+                className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                New Invoice
+              </Link>
+            </div>
           </div>
 
           {invoices.length === 0 ? (
