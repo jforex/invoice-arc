@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import { pdf } from '@react-pdf/renderer';
 import InvoicePDF from '@/components/InvoicePDF';
+import { formatCurrency } from '@/lib/currency';
 import React from 'react';
 
 interface InvoiceData {
@@ -19,6 +20,7 @@ interface InvoiceData {
   tax: number;
   total: number;
   notes: string;
+  currency?: string;
   items: InvoiceItem[];
 }
 
@@ -55,7 +57,6 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
 
   const fetchData = async () => {
     try {
-      // Fetch invoice by public token
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .select('*')
@@ -68,13 +69,11 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
         return;
       }
 
-      // Fetch invoice items
       const { data: items } = await supabase
         .from('invoice_items')
         .select('*')
         .eq('invoice_id', invoiceData.id);
 
-      // Fetch company settings
       const { data: companyData } = await supabase
         .from('companies')
         .select('*')
@@ -123,13 +122,6 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
@@ -161,11 +153,11 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
   const companyName = company?.name || 'Christian Design Studio';
   const companyEmail = company?.email || 'hello@christiandesign.com';
   const companyAddress = company?.address || 'Port Harcourt, Rivers State, Nigeria';
+  const currency = invoice.currency || 'USD';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-12 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
           <div 
             className="px-8 py-6"
@@ -197,9 +189,7 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
             </div>
           </div>
 
-          {/* Invoice Details */}
           <div className="p-8">
-            {/* Dates */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Issue Date</p>
@@ -211,7 +201,6 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
               </div>
             </div>
 
-            {/* From/To */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               <div>
                 <h3 className="text-sm font-semibold text-slate-500 mb-3">FROM</h3>
@@ -233,24 +222,15 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
               </div>
             </div>
 
-            {/* Line Items */}
             <div className="mb-8">
               <div className="overflow-hidden border border-slate-200 rounded-lg">
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                        Qty
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                        Price
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                        Amount
-                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Description</th>
+                      <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Qty</th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Price</th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Amount</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
@@ -258,8 +238,8 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
                       <tr key={item.id}>
                         <td className="px-6 py-4 text-sm text-slate-900">{item.description}</td>
                         <td className="px-6 py-4 text-sm text-slate-900 text-center">{item.quantity}</td>
-                        <td className="px-6 py-4 text-sm text-slate-900 text-right">{formatCurrency(item.price)}</td>
-                        <td className="px-6 py-4 text-sm font-semibold text-slate-900 text-right">{formatCurrency(item.amount)}</td>
+                        <td className="px-6 py-4 text-sm text-slate-900 text-right">{formatCurrency(item.price, currency)}</td>
+                        <td className="px-6 py-4 text-sm font-semibold text-slate-900 text-right">{formatCurrency(item.amount, currency)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -267,25 +247,23 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
               </div>
             </div>
 
-            {/* Totals */}
             <div className="flex justify-end mb-8">
               <div className="w-full md:w-80 space-y-3">
                 <div className="flex justify-between text-slate-600">
                   <span>Subtotal</span>
-                  <span className="font-semibold">{formatCurrency(invoice.subtotal)}</span>
+                  <span className="font-semibold">{formatCurrency(invoice.subtotal, currency)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Tax</span>
-                  <span className="font-semibold">{formatCurrency(invoice.tax)}</span>
+                  <span className="font-semibold">{formatCurrency(invoice.tax, currency)}</span>
                 </div>
                 <div className="border-t border-slate-200 pt-3 flex justify-between text-xl font-bold" style={{ color: brandColor }}>
                   <span>Total</span>
-                  <span>{formatCurrency(invoice.total)}</span>
+                  <span>{formatCurrency(invoice.total, currency)}</span>
                 </div>
               </div>
             </div>
 
-            {/* Notes */}
             {invoice.notes && (
               <div className="bg-slate-50 rounded-lg p-6 mb-6">
                 <h3 className="text-sm font-semibold text-slate-700 mb-2">Notes</h3>
@@ -293,7 +271,6 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
               </div>
             )}
 
-            {/* Payment Info */}
             <div 
               className="border rounded-lg p-6 mb-6"
               style={{ 
@@ -310,7 +287,6 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
               </div>
             </div>
 
-            {/* Download Button */}
             <button
               onClick={handleDownloadPDF}
               disabled={downloading}
@@ -334,7 +310,6 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
           </div>
         </div>
 
-        {/* Footer */}
         <div className="text-center text-slate-500 text-sm">
           <p>{companyName} • {companyAddress}</p>
           <p className="mt-1">{companyEmail}</p>

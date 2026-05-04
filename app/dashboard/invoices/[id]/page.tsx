@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { pdf } from '@react-pdf/renderer';
 import InvoicePDF from '@/components/InvoicePDF';
+import { formatCurrency } from '@/lib/currency';
 import React from 'react';
 
 interface InvoiceData {
@@ -21,6 +22,7 @@ interface InvoiceData {
   total: number;
   notes: string;
   public_token?: string;
+  currency?: string;
   items: InvoiceItem[];
 }
 
@@ -60,7 +62,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const fetchData = async () => {
     try {
-      // Fetch invoice
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .select('*')
@@ -73,13 +74,11 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         return;
       }
 
-      // Fetch invoice items
       const { data: items } = await supabase
         .from('invoice_items')
         .select('*')
         .eq('invoice_id', invoiceData.id);
 
-      // Fetch company settings
       const { data: companyData } = await supabase
         .from('companies')
         .select('*')
@@ -203,13 +202,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -224,11 +216,11 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   if (!invoice) return null;
 
   const brandColor = company?.brand_color || '#2563eb';
+  const currency = invoice.currency || 'USD';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <button
@@ -277,9 +269,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        {/* Invoice Card */}
         <div className="bg-white rounded-lg shadow-md p-8">
-          {/* Status & Due Date */}
           <div className="flex flex-col md:flex-row md:justify-between mb-8 gap-4">
             <div>
               <p className="text-sm text-gray-500 mb-1">📅 Due Date</p>
@@ -294,7 +284,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* From/To */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <div>
               <h3 className="text-sm font-semibold text-gray-500 mb-3">FROM</h3>
@@ -332,7 +321,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* Line Items */}
           <div className="mb-8">
             <table className="w-full">
               <thead className="border-b-2" style={{ borderColor: brandColor }}>
@@ -348,40 +336,37 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                   <tr key={item.id} className="border-b border-gray-100">
                     <td className="py-4 text-gray-900">{item.description}</td>
                     <td className="py-4 text-gray-900 text-center">{item.quantity}</td>
-                    <td className="py-4 text-gray-900 text-right">{formatCurrency(item.price)}</td>
-                    <td className="py-4 text-gray-900 text-right font-semibold">{formatCurrency(item.amount)}</td>
+                    <td className="py-4 text-gray-900 text-right">{formatCurrency(item.price, currency)}</td>
+                    <td className="py-4 text-gray-900 text-right font-semibold">{formatCurrency(item.amount, currency)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* Totals */}
           <div className="flex justify-end mb-6">
             <div className="w-full md:w-80 space-y-2">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal</span>
-                <span className="font-semibold">{formatCurrency(invoice.subtotal)}</span>
+                <span className="font-semibold">{formatCurrency(invoice.subtotal, currency)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Tax</span>
-                <span className="font-semibold">{formatCurrency(invoice.tax)}</span>
+                <span className="font-semibold">{formatCurrency(invoice.tax, currency)}</span>
               </div>
               <div className="border-t pt-2 flex justify-between text-xl font-bold" style={{ color: brandColor }}>
                 <span>Total</span>
-                <span>{formatCurrency(invoice.total)}</span>
+                <span>{formatCurrency(invoice.total, currency)}</span>
               </div>
             </div>
           </div>
 
-          {/* Notes */}
           {invoice.notes && (
             <div className="bg-gray-50 rounded-lg p-6 mb-6">
               <p className="text-gray-700">{invoice.notes}</p>
             </div>
           )}
 
-          {/* Payment Info */}
           <div className="border-t pt-6">
             <p className="text-sm text-gray-500 flex items-center gap-2">
               💲 Payment via USDC • 0% fees • 10-second settlement

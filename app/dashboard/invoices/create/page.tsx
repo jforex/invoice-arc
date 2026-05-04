@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
+import { CURRENCIES, formatCurrency, getCurrencySymbol } from '@/lib/currency';
 
 interface InvoiceItem {
   id: string;
@@ -16,6 +17,7 @@ interface InvoiceItem {
 export default function CreateInvoicePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [defaultsLoaded, setDefaultsLoaded] = useState(false);
 
   // Form state
   const [clientName, setClientName] = useState('');
@@ -23,9 +25,42 @@ export default function CreateInvoicePage() {
   const [clientAddress, setClientAddress] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [currency, setCurrency] = useState('USD');
+  const [taxRate, setTaxRate] = useState(0.001);
   const [items, setItems] = useState<InvoiceItem[]>([
     { id: uuidv4(), description: '', quantity: 1, price: 0, amount: 0 }
   ]);
+
+  // Load company defaults on mount
+  useEffect(() => {
+    loadDefaults();
+  }, []);
+
+  const loadDefaults = async () => {
+    try {
+      const { data: company } = await supabase
+        .from('companies')
+        .select('default_currency, default_tax_rate, default_payment_terms, default_notes')
+        .limit(1)
+        .single();
+
+      if (company) {
+        setCurrency(company.default_currency || 'USD');
+        setTaxRate(company.default_tax_rate || 0.001);
+        setNotes(company.default_notes || '');
+
+        // Set default due date based on payment terms
+        const days = company.default_payment_terms || 30;
+        const dueDateObj = new Date();
+        dueDateObj.setDate(dueDateObj.getDate() + days);
+        setDueDate(dueDateObj.toISOString().split('T')[0]);
+      }
+      setDefaultsLoaded(true);
+    } catch (error) {
+      console.error('Error loading defaults:', error);
+      setDefaultsLoaded(true);
+    }
+  };
 
   const addItem = () => {
     setItems([...items, { id: uuidv4(), description: '', quantity: 1, price: 0, amount: 0 }]);
@@ -52,7 +87,7 @@ export default function CreateInvoicePage() {
 
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
-    const tax = subtotal * 0.001; // 0.1% tax
+    const tax = subtotal * taxRate;
     const total = subtotal + tax;
     return { subtotal, tax, total };
   };
@@ -62,7 +97,6 @@ export default function CreateInvoicePage() {
     setLoading(true);
 
     try {
-      // Get the latest invoice number
       const { data: lastInvoice } = await supabase
         .from('invoices')
         .select('invoice_number')
@@ -77,11 +111,8 @@ export default function CreateInvoicePage() {
 
       const invoiceNumber = `INV-${String(nextNumber).padStart(3, '0')}`;
       const { subtotal, tax, total } = calculateTotals();
-
-      // Generate public token for shareable link
       const publicToken = uuidv4();
 
-      // Insert invoice
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
@@ -97,13 +128,13 @@ export default function CreateInvoicePage() {
           total,
           notes,
           public_token: publicToken,
+          currency: currency,
         })
         .select()
         .single();
 
       if (invoiceError) throw invoiceError;
 
-      // Insert invoice items
       const itemsToInsert = items.map(item => ({
         invoice_id: invoice.id,
         description: item.description,
@@ -118,7 +149,6 @@ export default function CreateInvoicePage() {
 
       if (itemsError) throw itemsError;
 
-      // Log activity
       const { data: companies } = await supabase.from('companies').select('id').limit(1);
       if (companies && companies.length > 0) {
         await supabase.from('activity').insert({
@@ -142,6 +172,18 @@ export default function CreateInvoicePage() {
   };
 
   const { subtotal, tax, total } = calculateTotals();
+  const currencySymbol = getCurrencySymbol(currency);
+
+  if (!defaultsLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -162,9 +204,7 @@ export default function CreateInvoicePage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Client Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Name *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Client Name *</label>
                 <input
                   type="text"
                   required
@@ -176,9 +216,7 @@ export default function CreateInvoicePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Email *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Client Email *</label>
                 <input
                   type="email"
                   required
@@ -190,9 +228,7 @@ export default function CreateInvoicePage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Address *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Client Address *</label>
                 <input
                   type="text"
                   required
@@ -204,9 +240,7 @@ export default function CreateInvoicePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Due Date *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Due Date *</label>
                 <input
                   type="date"
                   required
@@ -214,6 +248,24 @@ export default function CreateInvoicePage() {
                   onChange={(e) => setDueDate(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                 />
+              </div>
+
+              {/* CURRENCY SELECTOR - NEW! */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Currency 🌍
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+                >
+                  {CURRENCIES.map((curr) => (
+                    <option key={curr.code} value={curr.code}>
+                      {curr.flag} {curr.code} ({curr.symbol})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -232,12 +284,10 @@ export default function CreateInvoicePage() {
             </div>
 
             <div className="space-y-4">
-              {items.map((item, index) => (
+              {items.map((item) => (
                 <div key={item.id} className="grid grid-cols-12 gap-4 items-end">
                   <div className="col-span-12 md:col-span-5">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                     <input
                       type="text"
                       required
@@ -249,9 +299,7 @@ export default function CreateInvoicePage() {
                   </div>
 
                   <div className="col-span-4 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Qty
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Qty</label>
                     <input
                       type="number"
                       required
@@ -264,7 +312,7 @@ export default function CreateInvoicePage() {
 
                   <div className="col-span-4 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Price
+                      Price ({currencySymbol})
                     </label>
                     <input
                       type="number"
@@ -278,11 +326,9 @@ export default function CreateInvoicePage() {
                   </div>
 
                   <div className="col-span-3 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Amount
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
                     <div className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium">
-                      ${item.amount.toFixed(2)}
+                      {formatCurrency(item.amount, currency)}
                     </div>
                   </div>
 
@@ -308,24 +354,22 @@ export default function CreateInvoicePage() {
             <div className="w-full md:w-80 space-y-2">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal:</span>
-                <span className="font-semibold text-gray-900">${subtotal.toFixed(2)}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(subtotal, currency)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>Tax (0.1%):</span>
-                <span className="font-semibold text-gray-900">${tax.toFixed(2)}</span>
+                <span>Tax ({(taxRate * 100).toFixed(3)}%):</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(tax, currency)}</span>
               </div>
               <div className="border-t pt-2 flex justify-between text-lg font-bold text-gray-900">
                 <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{formatCurrency(total, currency)}</span>
               </div>
             </div>
           </div>
 
           {/* Notes */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

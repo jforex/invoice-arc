@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/currency';
 import { 
   DollarSign, 
   FileText, 
@@ -23,6 +24,7 @@ interface Invoice {
   issue_date: string;
   due_date: string;
   created_at: string;
+  currency?: string;
 }
 
 interface Stats {
@@ -41,6 +43,7 @@ export default function Dashboard() {
     paidThisMonth: 0
   });
   const [loading, setLoading] = useState(true);
+  const [defaultCurrency, setDefaultCurrency] = useState('USD');
 
   useEffect(() => {
     loadDashboardData();
@@ -48,6 +51,17 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
+      // Fetch company default currency
+      const { data: company } = await supabase
+        .from('companies')
+        .select('default_currency')
+        .limit(1)
+        .single();
+
+      if (company?.default_currency) {
+        setDefaultCurrency(company.default_currency);
+      }
+
       // Fetch invoices
       const { data: invoicesData } = await supabase
         .from('invoices')
@@ -57,7 +71,6 @@ export default function Dashboard() {
       if (invoicesData) {
         setInvoices(invoicesData);
 
-        // Calculate stats
         const totalRevenue = invoicesData.reduce((sum, inv) => sum + inv.total, 0);
         const pendingAmount = invoicesData
           .filter(inv => inv.status === 'pending')
@@ -111,7 +124,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
@@ -140,9 +152,7 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Revenue */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
@@ -154,11 +164,10 @@ export default function Dashboard() {
               </div>
             </div>
             <h3 className="text-gray-600 text-sm font-medium mb-1">Total Revenue</h3>
-            <p className="text-3xl font-bold text-gray-900">${stats.totalRevenue.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue, defaultCurrency)}</p>
             <p className="text-gray-500 text-sm mt-1">This month</p>
           </div>
 
-          {/* Invoices Sent */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
@@ -171,10 +180,9 @@ export default function Dashboard() {
             </div>
             <h3 className="text-gray-600 text-sm font-medium mb-1">Invoices Sent</h3>
             <p className="text-3xl font-bold text-gray-900">{stats.invoicesSent}</p>
-            <p className="text-gray-500 text-sm mt-1">0 paid</p>
+            <p className="text-gray-500 text-sm mt-1">{invoices.filter(i => i.status === 'paid').length} paid</p>
           </div>
 
-          {/* Pending Amount */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
@@ -182,11 +190,10 @@ export default function Dashboard() {
               </div>
             </div>
             <h3 className="text-gray-600 text-sm font-medium mb-1">Pending Amount</h3>
-            <p className="text-3xl font-bold text-gray-900">${stats.pendingAmount.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.pendingAmount, defaultCurrency)}</p>
             <p className="text-gray-500 text-sm mt-1">{invoices.filter(i => i.status === 'pending').length} invoices</p>
           </div>
 
-          {/* Paid This Month */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
@@ -194,12 +201,11 @@ export default function Dashboard() {
               </div>
             </div>
             <h3 className="text-gray-600 text-sm font-medium mb-1">Paid This Month</h3>
-            <p className="text-3xl font-bold text-gray-900">${stats.paidThisMonth.toFixed(2)}</p>
-            <p className="text-gray-500 text-sm mt-1">0 invoices</p>
+            <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.paidThisMonth, defaultCurrency)}</p>
+            <p className="text-gray-500 text-sm mt-1">{invoices.filter(i => i.status === 'paid').length} invoices</p>
           </div>
         </div>
 
-        {/* Recent Invoices */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Recent Invoices</h2>
@@ -230,24 +236,12 @@ export default function Dashboard() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Invoice
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Client
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Due Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -268,7 +262,10 @@ export default function Dashboard() {
                         <div className="text-sm font-medium text-gray-900">{invoice.client_name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-gray-900">${invoice.total.toFixed(2)}</div>
+                        <div className="text-sm font-bold text-gray-900">
+                          {formatCurrency(invoice.total, invoice.currency || 'USD')}
+                        </div>
+                        <div className="text-xs text-gray-500">{invoice.currency || 'USD'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>

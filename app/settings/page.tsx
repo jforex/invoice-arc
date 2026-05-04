@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { CURRENCIES } from '@/lib/currency';
 
 interface CompanySettings {
   id: string;
@@ -17,6 +18,7 @@ interface CompanySettings {
   default_payment_terms: number;
   default_notes: string;
   email_signature: string;
+  default_currency: string;
 }
 
 export default function SettingsPage() {
@@ -72,6 +74,7 @@ export default function SettingsPage() {
           default_payment_terms: company.default_payment_terms,
           default_notes: company.default_notes,
           email_signature: company.email_signature,
+          default_currency: company.default_currency,
         })
         .eq('id', company.id);
 
@@ -89,7 +92,6 @@ export default function SettingsPage() {
     const file = event.target.files?.[0];
     if (!file || !company) return;
 
-    // Validate file
     if (!file.type.startsWith('image/')) {
       alert('Please upload an image file');
       return;
@@ -106,7 +108,6 @@ export default function SettingsPage() {
       const fileName = `${company.id}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('company-logos')
         .upload(filePath, file, {
@@ -116,7 +117,6 @@ export default function SettingsPage() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from('company-logos')
         .getPublicUrl(filePath);
@@ -153,7 +153,6 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push('/dashboard')}
@@ -165,7 +164,6 @@ export default function SettingsPage() {
           <p className="text-gray-600 mt-1">Manage your company information and preferences</p>
         </div>
 
-        {/* Tabs */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="border-b border-gray-200">
             <div className="flex flex-wrap">
@@ -177,7 +175,7 @@ export default function SettingsPage() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                 Company Info
+                🏢 Company Info
               </button>
               <button
                 onClick={() => setActiveTab('branding')}
@@ -187,7 +185,7 @@ export default function SettingsPage() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                 Branding
+                🎨 Branding
               </button>
               <button
                 onClick={() => setActiveTab('invoice')}
@@ -197,7 +195,7 @@ export default function SettingsPage() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                 Invoice Defaults
+                📄 Invoice Defaults
               </button>
               <button
                 onClick={() => setActiveTab('email')}
@@ -207,12 +205,11 @@ export default function SettingsPage() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                 Email
+                ✉️ Email
               </button>
             </div>
           </div>
 
-          {/* Tab Content */}
           <div className="p-6 md:p-8">
             {/* Company Info Tab */}
             {activeTab === 'company' && (
@@ -224,9 +221,7 @@ export default function SettingsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Company Name *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
                     <input
                       type="text"
                       value={company.name}
@@ -236,9 +231,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                     <input
                       type="email"
                       value={company.email}
@@ -248,9 +241,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
                     <input
                       type="text"
                       value={company.address}
@@ -260,9 +251,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                     <input
                       type="tel"
                       value={company.phone || ''}
@@ -273,9 +262,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Website
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
                     <input
                       type="url"
                       value={company.website || ''}
@@ -296,11 +283,8 @@ export default function SettingsPage() {
                   <p className="text-gray-600 text-sm mb-6">Customize the look of your invoices and emails.</p>
                 </div>
 
-                {/* Logo Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company Logo
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo</label>
                   <div className="flex items-center gap-4">
                     {company.logo_url ? (
                       <div className="relative">
@@ -341,11 +325,8 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Brand Color */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Brand Color
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Brand Color</label>
                   <div className="flex items-center gap-4">
                     <input
                       type="color"
@@ -371,7 +352,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Invoice Defaults Tab */}
+            {/* Invoice Defaults Tab - WITH CURRENCY SELECTOR */}
             {activeTab === 'invoice' && (
               <div className="space-y-6">
                 <div>
@@ -380,10 +361,27 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  {/* Currency Selector - NEW! */}
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Default Tax Rate (%)
+                      Default Currency 🌍
                     </label>
+                    <select
+                      value={company.default_currency}
+                      onChange={(e) => setCompany({ ...company, default_currency: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+                    >
+                      {CURRENCIES.map((currency) => (
+                        <option key={currency.code} value={currency.code}>
+                          {currency.flag} {currency.code} - {currency.name} ({currency.symbol})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">All new invoices will use this currency by default.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Default Tax Rate (%)</label>
                     <input
                       type="number"
                       step="0.001"
@@ -397,9 +395,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Default Payment Terms (days)
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Default Payment Terms (days)</label>
                     <input
                       type="number"
                       min="0"
@@ -411,9 +407,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Default Invoice Notes
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Default Invoice Notes</label>
                     <textarea
                       value={company.default_notes}
                       onChange={(e) => setCompany({ ...company, default_notes: e.target.value })}
@@ -435,9 +429,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Signature
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Signature</label>
                   <textarea
                     value={company.email_signature}
                     onChange={(e) => setCompany({ ...company, email_signature: e.target.value })}
@@ -449,7 +441,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="text-sm font-semibold text-blue-900 mb-2"> Preview</h3>
+                  <h3 className="text-sm font-semibold text-blue-900 mb-2">📧 Preview</h3>
                   <p className="text-sm text-blue-800">
                     {company.email_signature}<br />
                     <strong>{company.name}</strong>
@@ -459,7 +451,6 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Save Button */}
           <div className="border-t border-gray-200 px-6 md:px-8 py-4 bg-gray-50 flex justify-end gap-3">
             <button
               onClick={() => router.push('/dashboard')}

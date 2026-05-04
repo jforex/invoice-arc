@@ -29,6 +29,7 @@ interface InvoiceData {
   tax: number;
   total: number;
   notes: string;
+  currency?: string;
   items: InvoiceItem[];
 }
 
@@ -47,12 +48,35 @@ interface InvoicePDFProps {
   company?: CompanyData;
 }
 
-// Default company info (fallback)
 const defaultCompany: CompanyData = {
   name: 'Christian Design Studio',
   email: 'hello@christiandesign.com',
   address: 'Port Harcourt, Rivers State, Nigeria',
   brand_color: '#2563eb',
+};
+
+// Currency symbols for PDF (since Intl might not work well in PDF context)
+const CURRENCY_SYMBOLS: { [key: string]: string } = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  NGN: 'N',  // Use 'N' for Naira since ₦ may not render in PDF
+  KES: 'KSh',
+  GHS: 'GHS',
+  ZAR: 'R',
+  CAD: 'C$',
+  AUD: 'A$',
+  JPY: 'Y',  // Use 'Y' for Yen since ¥ may not render
+  INR: 'Rs',
+  CNY: 'Y',
+  BRL: 'R$',
+  MXN: 'Mex$',
+  AED: 'AED',
+};
+
+const formatPDFCurrency = (amount: number, currency: string = 'USD'): string => {
+  const symbol = CURRENCY_SYMBOLS[currency] || '$';
+  return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const createStyles = (brandColor: string) => StyleSheet.create({
@@ -94,6 +118,12 @@ const createStyles = (brandColor: string) => StyleSheet.create({
     fontSize: 14,
     color: '#ffffff',
     opacity: 0.9,
+  },
+  currencyBadge: {
+    fontSize: 10,
+    color: '#ffffff',
+    opacity: 0.8,
+    marginTop: 4,
   },
   statusBadge: {
     backgroundColor: '#ffffff',
@@ -259,16 +289,10 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};
-
 const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, company = defaultCompany }) => {
   const brandColor = company.brand_color || '#2563eb';
   const styles = createStyles(brandColor);
+  const currency = invoice.currency || 'USD';
 
   return (
     <Document>
@@ -282,6 +306,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, company = defaultCompa
             <View>
               <Text style={styles.invoiceTitle}>INVOICE</Text>
               <Text style={styles.invoiceNumber}>{invoice.invoice_number}</Text>
+              <Text style={styles.currencyBadge}>Currency: {currency}</Text>
             </View>
           </View>
           <View style={styles.headerRight}>
@@ -337,8 +362,8 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, company = defaultCompa
               <View key={item.id} style={styles.tableRow}>
                 <Text style={styles.tableCol1}>{item.description}</Text>
                 <Text style={styles.tableCol2}>{item.quantity}</Text>
-                <Text style={styles.tableCol3}>{formatCurrency(item.price)}</Text>
-                <Text style={styles.tableCol4}>{formatCurrency(item.amount)}</Text>
+                <Text style={styles.tableCol3}>{formatPDFCurrency(item.price, currency)}</Text>
+                <Text style={styles.tableCol4}>{formatPDFCurrency(item.amount, currency)}</Text>
               </View>
             ))}
           </View>
@@ -347,15 +372,15 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, company = defaultCompa
           <View style={styles.totals}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalValue}>{formatCurrency(invoice.subtotal)}</Text>
+              <Text style={styles.totalValue}>{formatPDFCurrency(invoice.subtotal, currency)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax</Text>
-              <Text style={styles.totalValue}>{formatCurrency(invoice.tax)}</Text>
+              <Text style={styles.totalValue}>{formatPDFCurrency(invoice.tax, currency)}</Text>
             </View>
             <View style={styles.totalRowFinal}>
-              <Text style={styles.finalLabel}>Total</Text>
-              <Text style={styles.finalValue}>{formatCurrency(invoice.total)}</Text>
+              <Text style={styles.finalLabel}>Total ({currency})</Text>
+              <Text style={styles.finalValue}>{formatPDFCurrency(invoice.total, currency)}</Text>
             </View>
           </View>
 

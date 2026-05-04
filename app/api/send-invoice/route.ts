@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { InvoiceEmailTemplate } from '@/lib/InvoiceEmailTemplate';
 import { pdf } from '@react-pdf/renderer';
 import InvoicePDF from '@/components/InvoicePDF';
+import { formatCurrency } from '@/lib/currency';
 import React from 'react';
 
 export async function POST(request: NextRequest) {
@@ -17,7 +18,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch invoice from database
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*')
@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch invoice items
     const { data: items, error: itemsError } = await supabase
       .from('invoice_items')
       .select('*')
@@ -44,14 +43,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch company settings
     const { data: company } = await supabase
       .from('companies')
       .select('*')
       .limit(1)
       .single();
 
-    // Generate PDF buffer with company branding
     const pdfElement = React.createElement(InvoicePDF as any, { 
       invoice: { ...invoice, items: items || [] },
       company: company || undefined,
@@ -60,7 +57,6 @@ export async function POST(request: NextRequest) {
     const pdfBlob = await pdf(pdfElement).toBlob();
     const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
 
-    // Format dates for email
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleDateString('en-US', {
         month: 'long',
@@ -69,18 +65,16 @@ export async function POST(request: NextRequest) {
       });
     };
 
-    // Create PUBLIC invoice URL using public_token
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const invoiceUrl = invoice.public_token 
       ? `${baseUrl}/invoice/${invoice.public_token}`
       : `${baseUrl}/dashboard/invoices/${invoiceId}`;
 
-    // Initialize Resend inside the function
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     const companyName = company?.name || 'Christian Design Studio';
+    const currency = invoice.currency || 'USD';
 
-    // Send email with Resend
     const { data, error } = await resend.emails.send({
       from: `${companyName} <onboarding@resend.dev>`,
       to: [invoice.client_email],
@@ -88,7 +82,7 @@ export async function POST(request: NextRequest) {
       html: InvoiceEmailTemplate({
         invoiceNumber: invoice.invoice_number,
         clientName: invoice.client_name,
-        total: `$${invoice.total.toFixed(2)}`,
+        total: formatCurrency(invoice.total, currency),
         dueDate: formatDate(invoice.due_date),
         invoiceUrl: invoiceUrl,
         companyName: company?.name,
@@ -116,7 +110,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity in database
     const { data: companies } = await supabase.from('companies').select('id').limit(1);
     if (companies && companies.length > 0) {
       await supabase.from('activity').insert({
