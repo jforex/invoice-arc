@@ -10,7 +10,8 @@ import {
   CheckCircle,
   TrendingUp,
   Plus,
-  Eye
+  Eye,
+  Settings
 } from 'lucide-react';
 
 interface Invoice {
@@ -118,13 +119,22 @@ export default function Dashboard() {
               <h1 className="text-3xl font-bold text-gray-900">Inv</h1>
               <p className="text-gray-600 mt-1">Welcome back! Here's what's happening today.</p>
             </div>
-            <Link
-              href="/dashboard/invoices/create"
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Create Invoice
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/dashboard/invoices/create"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Create Invoice
+              </Link>
+              <Link
+                href="/settings"
+                className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                title="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>

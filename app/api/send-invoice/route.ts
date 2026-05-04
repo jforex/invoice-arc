@@ -44,14 +44,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate PDF buffer - using type assertion to bypass TypeScript strictness
-    const pdfElement = React.createElement(InvoicePDF, { 
-      invoice: { ...invoice, items: items || [] } 
+    // Fetch company settings
+    const { data: company } = await supabase
+      .from('companies')
+      .select('*')
+      .limit(1)
+      .single();
+
+    // Generate PDF buffer with company branding
+    const pdfElement = React.createElement(InvoicePDF as any, { 
+      invoice: { ...invoice, items: items || [] },
+      company: company || undefined,
     }) as any;
     
     const pdfBlob = await pdf(pdfElement).toBlob();
-
-    // Convert blob to buffer
     const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
 
     // Format dates for email
@@ -69,20 +75,30 @@ export async function POST(request: NextRequest) {
       ? `${baseUrl}/invoice/${invoice.public_token}`
       : `${baseUrl}/dashboard/invoices/${invoiceId}`;
 
-    // Initialize Resend inside the function to avoid build-time errors
+    // Initialize Resend inside the function
     const resend = new Resend(process.env.RESEND_API_KEY);
+
+    const companyName = company?.name || 'Christian Design Studio';
 
     // Send email with Resend
     const { data, error } = await resend.emails.send({
-      from: 'Christian Design Studio <onboarding@resend.dev>',
+      from: `${companyName} <onboarding@resend.dev>`,
       to: [invoice.client_email],
-      subject: `Invoice ${invoice.invoice_number} from Christian Design Studio`,
+      subject: `Invoice ${invoice.invoice_number} from ${companyName}`,
       html: InvoiceEmailTemplate({
         invoiceNumber: invoice.invoice_number,
         clientName: invoice.client_name,
         total: `$${invoice.total.toFixed(2)}`,
         dueDate: formatDate(invoice.due_date),
         invoiceUrl: invoiceUrl,
+        companyName: company?.name,
+        companyEmail: company?.email,
+        companyAddress: company?.address,
+        companyPhone: company?.phone,
+        companyWebsite: company?.website,
+        brandColor: company?.brand_color,
+        logoUrl: company?.logo_url,
+        emailSignature: company?.email_signature,
       }),
       attachments: [
         {

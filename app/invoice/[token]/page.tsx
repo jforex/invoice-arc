@@ -30,32 +30,37 @@ interface InvoiceItem {
   amount: number;
 }
 
+interface CompanyData {
+  name: string;
+  email: string;
+  address: string;
+  phone?: string;
+  website?: string;
+  logo_url?: string;
+  brand_color: string;
+}
+
 export default function PublicInvoicePage({ params }: { params: Promise<{ token: string }> }) {
-  // Unwrap the params Promise using React's use() hook
   const { token } = use(params);
   
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
+  const [company, setCompany] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchInvoice();
+    fetchData();
   }, [token]);
 
-  const fetchInvoice = async () => {
+  const fetchData = async () => {
     try {
-      console.log('Fetching invoice with token:', token);
-      
       // Fetch invoice by public token
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .select('*')
         .eq('public_token', token)
         .single();
-
-      console.log('Invoice data:', invoiceData);
-      console.log('Invoice error:', invoiceError);
 
       if (invoiceError || !invoiceData) {
         setError('Invoice not found');
@@ -64,18 +69,20 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
       }
 
       // Fetch invoice items
-      const { data: items, error: itemsError } = await supabase
+      const { data: items } = await supabase
         .from('invoice_items')
         .select('*')
         .eq('invoice_id', invoiceData.id);
 
-      if (itemsError) {
-        setError('Failed to load invoice details');
-        setLoading(false);
-        return;
-      }
+      // Fetch company settings
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('*')
+        .limit(1)
+        .single();
 
       setInvoice({ ...invoiceData, items: items || [] });
+      setCompany(companyData);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching invoice:', err);
@@ -89,7 +96,10 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
     
     setDownloading(true);
     try {
-      const pdfElement = React.createElement(InvoicePDF as any, { invoice }) as any;
+      const pdfElement = React.createElement(InvoicePDF as any, { 
+        invoice, 
+        company: company || undefined 
+      }) as any;
       const blob = await pdf(pdfElement).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -147,16 +157,33 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
     );
   }
 
+  const brandColor = company?.brand_color || '#2563eb';
+  const companyName = company?.name || 'Christian Design Studio';
+  const companyEmail = company?.email || 'hello@christiandesign.com';
+  const companyAddress = company?.address || 'Port Harcourt, Rivers State, Nigeria';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
+          <div 
+            className="px-8 py-6"
+            style={{ background: `linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%)` }}
+          >
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-1">{invoice.invoice_number}</h1>
-                <p className="text-blue-100">Invoice from Christian Design Studio</p>
+              <div className="flex items-center gap-4">
+                {company?.logo_url && (
+                  <img 
+                    src={company.logo_url} 
+                    alt="Company logo" 
+                    className="w-16 h-16 object-contain bg-white rounded-lg p-2"
+                  />
+                )}
+                <div>
+                  <h1 className="text-3xl font-bold text-white mb-1">{invoice.invoice_number}</h1>
+                  <p className="text-white opacity-90">Invoice from {companyName}</p>
+                </div>
               </div>
               <div className="text-right">
                 <div className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${
@@ -189,9 +216,11 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
               <div>
                 <h3 className="text-sm font-semibold text-slate-500 mb-3">FROM</h3>
                 <div className="space-y-1">
-                  <p className="font-semibold text-slate-900">Christian Design Studio</p>
-                  <p className="text-slate-600">hello@christiandesign.com</p>
-                  <p className="text-slate-600">Port Harcourt, Rivers State, Nigeria</p>
+                  <p className="font-semibold text-slate-900">{companyName}</p>
+                  <p className="text-slate-600">{companyEmail}</p>
+                  <p className="text-slate-600">{companyAddress}</p>
+                  {company?.phone && <p className="text-slate-600">{company.phone}</p>}
+                  {company?.website && <p className="text-slate-600">{company.website}</p>}
                 </div>
               </div>
               <div>
@@ -246,10 +275,10 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
                   <span className="font-semibold">{formatCurrency(invoice.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>Tax (0.1%)</span>
+                  <span>Tax</span>
                   <span className="font-semibold">{formatCurrency(invoice.tax)}</span>
                 </div>
-                <div className="border-t border-slate-200 pt-3 flex justify-between text-xl font-bold text-slate-900">
+                <div className="border-t border-slate-200 pt-3 flex justify-between text-xl font-bold" style={{ color: brandColor }}>
                   <span>Total</span>
                   <span>{formatCurrency(invoice.total)}</span>
                 </div>
@@ -265,12 +294,18 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
             )}
 
             {/* Payment Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <div 
+              className="border rounded-lg p-6 mb-6"
+              style={{ 
+                backgroundColor: `${brandColor}10`,
+                borderColor: `${brandColor}30`
+              }}
+            >
               <div className="flex items-start gap-3">
-                <div className="text-blue-600 text-2xl">💳</div>
+                <div className="text-2xl" style={{ color: brandColor }}>💳</div>
                 <div>
-                  <h3 className="font-semibold text-blue-900 mb-1">Fast Payment Options</h3>
-                  <p className="text-blue-700 text-sm">Pay with USDC • 0% fees • 10-second settlement</p>
+                  <h3 className="font-semibold mb-1" style={{ color: brandColor }}>Fast Payment Options</h3>
+                  <p className="text-sm" style={{ color: brandColor }}>Pay with USDC • 0% fees • 10-second settlement</p>
                 </div>
               </div>
             </div>
@@ -279,7 +314,8 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
             <button
               onClick={handleDownloadPDF}
               disabled={downloading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full text-white font-semibold py-4 px-6 rounded-lg transition-opacity duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              style={{ backgroundColor: brandColor }}
             >
               {downloading ? (
                 <>
@@ -300,8 +336,8 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
 
         {/* Footer */}
         <div className="text-center text-slate-500 text-sm">
-          <p>Christian Design Studio • Port Harcourt, Rivers State, Nigeria</p>
-          <p className="mt-1">hello@christiandesign.com</p>
+          <p>{companyName} • {companyAddress}</p>
+          <p className="mt-1">{companyEmail}</p>
         </div>
       </div>
     </div>

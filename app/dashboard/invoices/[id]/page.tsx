@@ -32,12 +32,22 @@ interface InvoiceItem {
   amount: number;
 }
 
+interface CompanyData {
+  name: string;
+  email: string;
+  address: string;
+  phone?: string;
+  website?: string;
+  logo_url?: string;
+  brand_color: string;
+}
+
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  // Unwrap params Promise for Next.js 16
   const { id } = use(params);
   
   const router = useRouter();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
+  const [company, setCompany] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -45,11 +55,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetchInvoice();
+    fetchData();
   }, [id]);
 
-  const fetchInvoice = async () => {
+  const fetchData = async () => {
     try {
+      // Fetch invoice
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .select('*')
@@ -62,12 +73,21 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         return;
       }
 
+      // Fetch invoice items
       const { data: items } = await supabase
         .from('invoice_items')
         .select('*')
         .eq('invoice_id', invoiceData.id);
 
+      // Fetch company settings
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('*')
+        .limit(1)
+        .single();
+
       setInvoice({ ...invoiceData, items: items || [] });
+      setCompany(companyData);
       setLoading(false);
     } catch (err) {
       console.error('Error:', err);
@@ -79,7 +99,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     if (!invoice) return;
     setDownloading(true);
     try {
-      const pdfElement = React.createElement(InvoicePDF as any, { invoice }) as any;
+      const pdfElement = React.createElement(InvoicePDF as any, { 
+        invoice, 
+        company: company || undefined 
+      }) as any;
       const blob = await pdf(pdfElement).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -138,7 +161,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
       if (error) throw error;
 
-      // Log activity
       const { data: companies } = await supabase.from('companies').select('id').limit(1);
       if (companies && companies.length > 0) {
         await supabase.from('activity').insert({
@@ -200,6 +222,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   }
 
   if (!invoice) return null;
+
+  const brandColor = company?.brand_color || '#2563eb';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -275,13 +299,26 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <div>
               <h3 className="text-sm font-semibold text-gray-500 mb-3">FROM</h3>
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-xl">
-                  🏢
-                </div>
+                {company?.logo_url ? (
+                  <img 
+                    src={company.logo_url} 
+                    alt="Company logo" 
+                    className="w-12 h-12 object-contain rounded-lg bg-white border border-gray-200 p-1"
+                  />
+                ) : (
+                  <div 
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xl"
+                    style={{ backgroundColor: brandColor }}
+                  >
+                    🏢
+                  </div>
+                )}
                 <div>
-                  <p className="font-semibold text-gray-900">Christian Design Studio</p>
-                  <p className="text-gray-600 text-sm">hello@christiandesign.com</p>
-                  <p className="text-gray-600 text-sm">Port Harcourt, Rivers State, Nigeria</p>
+                  <p className="font-semibold text-gray-900">{company?.name || 'Christian Design Studio'}</p>
+                  <p className="text-gray-600 text-sm">{company?.email || 'hello@christiandesign.com'}</p>
+                  <p className="text-gray-600 text-sm">{company?.address || 'Port Harcourt, Rivers State, Nigeria'}</p>
+                  {company?.phone && <p className="text-gray-600 text-sm">{company.phone}</p>}
+                  {company?.website && <p className="text-gray-600 text-sm">{company.website}</p>}
                 </div>
               </div>
             </div>
@@ -298,7 +335,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           {/* Line Items */}
           <div className="mb-8">
             <table className="w-full">
-              <thead className="border-b-2 border-gray-200">
+              <thead className="border-b-2" style={{ borderColor: brandColor }}>
                 <tr>
                   <th className="text-left py-3 text-xs font-semibold text-gray-600 uppercase">Description</th>
                   <th className="text-center py-3 text-xs font-semibold text-gray-600 uppercase">Qty</th>
@@ -327,10 +364,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                 <span className="font-semibold">{formatCurrency(invoice.subtotal)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>Tax (0.1%)</span>
+                <span>Tax</span>
                 <span className="font-semibold">{formatCurrency(invoice.tax)}</span>
               </div>
-              <div className="border-t pt-2 flex justify-between text-xl font-bold text-gray-900">
+              <div className="border-t pt-2 flex justify-between text-xl font-bold" style={{ color: brandColor }}>
                 <span>Total</span>
                 <span>{formatCurrency(invoice.total)}</span>
               </div>
