@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { CURRENCIES, formatCurrency, getCurrencySymbol } from '@/lib/currency';
-import { Users, UserPlus } from 'lucide-react';
+import { Users, UserPlus, Repeat, Calendar } from 'lucide-react';
 
 interface InvoiceItem {
   id: string;
@@ -44,6 +44,11 @@ function CreateInvoiceContent() {
     { id: uuidv4(), description: '', quantity: 1, price: 0, amount: 0 }
   ]);
 
+  // Recurring fields
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState('monthly');
+  const [recurringEndDate, setRecurringEndDate] = useState('');
+
   useEffect(() => {
     loadDefaults();
   }, []);
@@ -67,7 +72,6 @@ function CreateInvoiceContent() {
         setDueDate(dueDateObj.toISOString().split('T')[0]);
       }
 
-      // Load saved clients
       const { data: clients } = await supabase
         .from('clients')
         .select('*')
@@ -75,16 +79,11 @@ function CreateInvoiceContent() {
 
       if (clients) {
         setSavedClients(clients);
-
-        // Pre-select client if URL param exists
         if (preSelectedClientId) {
           const client = clients.find(c => c.id === preSelectedClientId);
-          if (client) {
-            selectClient(client);
-          }
+          if (client) selectClient(client);
         }
       }
-
       setDefaultsLoaded(true);
     } catch (error) {
       console.error('Error loading defaults:', error);
@@ -97,12 +96,6 @@ function CreateInvoiceContent() {
     setClientEmail(client.email);
     setClientAddress(client.address || '');
     setShowClientSelector(false);
-  };
-
-  const clearClient = () => {
-    setClientName('');
-    setClientEmail('');
-    setClientAddress('');
   };
 
   const addItem = () => {
@@ -133,6 +126,17 @@ function CreateInvoiceContent() {
     return { subtotal, tax, total };
   };
 
+  const calculateNextDate = (frequency: string, fromDate: Date): Date => {
+    const next = new Date(fromDate);
+    switch (frequency) {
+      case 'weekly': next.setDate(next.getDate() + 7); break;
+      case 'monthly': next.setMonth(next.getMonth() + 1); break;
+      case 'quarterly': next.setMonth(next.getMonth() + 3); break;
+      case 'yearly': next.setFullYear(next.getFullYear() + 1); break;
+    }
+    return next;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -154,20 +158,33 @@ function CreateInvoiceContent() {
       const { subtotal, tax, total } = calculateTotals();
       const publicToken = uuidv4();
 
+      // Calculate next recurring date
+      const recurringNextDate = isRecurring ? calculateNextDate(recurringFrequency, new Date(dueDate)) : null;
+
+      const invoiceData: any = {
+        invoice_number: invoiceNumber,
+        client_name: clientName,
+        client_email: clientEmail,
+        client_address: clientAddress,
+        issue_date: new Date().toISOString().split('T')[0],
+        due_date: dueDate,
+        status: 'pending',
+        subtotal, tax, total, notes,
+        public_token: publicToken,
+        currency: currency,
+        is_recurring: isRecurring,
+      };
+
+      if (isRecurring) {
+        invoiceData.recurring_frequency = recurringFrequency;
+        invoiceData.recurring_next_date = recurringNextDate?.toISOString().split('T')[0];
+        invoiceData.recurring_end_date = recurringEndDate || null;
+        invoiceData.recurring_active = true;
+      }
+
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
-        .insert({
-          invoice_number: invoiceNumber,
-          client_name: clientName,
-          client_email: clientEmail,
-          client_address: clientAddress,
-          issue_date: new Date().toISOString().split('T')[0],
-          due_date: dueDate,
-          status: 'pending',
-          subtotal, tax, total, notes,
-          public_token: publicToken,
-          currency: currency,
-        })
+        .insert(invoiceData)
         .select()
         .single();
 
@@ -187,7 +204,7 @@ function CreateInvoiceContent() {
 
       if (itemsError) throw itemsError;
 
-      // Auto-save client if not exists
+      // Auto-save client
       const { data: existingClient } = await supabase
         .from('clients')
         .select('id')
@@ -218,7 +235,7 @@ function CreateInvoiceContent() {
         });
       }
 
-      alert('Invoice created successfully!');
+      alert(`Invoice created!${isRecurring ? ' Will recur ' + recurringFrequency + '.' : ''}`);
       router.push('/dashboard');
     } catch (error) {
       console.error('Error creating invoice:', error);
@@ -232,37 +249,24 @@ function CreateInvoiceContent() {
   const currencySymbol = getCurrencySymbol(currency);
 
   if (!defaultsLoaded) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div><p className="text-gray-600">Loading...</p></div></div>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-8">
-          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4">
-            ← Back to Dashboard
-          </button>
+          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4">← Back to Dashboard</button>
           <h1 className="text-3xl font-bold text-gray-900">Create New Invoice</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
-          {/* Client Selector */}
+          {/* Client Section */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl font-semibold text-gray-900">Client Information</h2>
               {savedClients.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowClientSelector(!showClientSelector)}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
-                >
+                <button type="button" onClick={() => setShowClientSelector(!showClientSelector)} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   {showClientSelector ? 'Hide' : 'Select Saved Client'}
                 </button>
@@ -271,23 +275,13 @@ function CreateInvoiceContent() {
 
             {showClientSelector && savedClients.length > 0 && (
               <div className="mb-4 bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                <p className="text-sm text-gray-600 mb-3">Click a client to auto-fill their info:</p>
+                <p className="text-sm text-gray-600 mb-3">Click a client to auto-fill:</p>
                 <div className="space-y-2">
                   {savedClients.map(client => (
-                    <button
-                      key={client.id}
-                      type="button"
-                      onClick={() => selectClient(client)}
-                      className="w-full text-left p-3 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
-                    >
+                    <button key={client.id} type="button" onClick={() => selectClient(client)} className="w-full text-left p-3 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {client.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{client.name}</p>
-                          <p className="text-sm text-gray-500">{client.email}</p>
-                        </div>
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">{client.name.charAt(0).toUpperCase()}</div>
+                        <div className="flex-1"><p className="font-medium text-gray-900">{client.name}</p><p className="text-sm text-gray-500">{client.email}</p></div>
                       </div>
                     </button>
                   ))}
@@ -296,73 +290,76 @@ function CreateInvoiceContent() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Client Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                  placeholder="Acme Corp"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Client Email *</label>
-                <input
-                  type="email"
-                  required
-                  value={clientEmail}
-                  onChange={(e) => setClientEmail(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                  placeholder="contact@acme.com"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Client Address *</label>
-                <input
-                  type="text"
-                  required
-                  value={clientAddress}
-                  onChange={(e) => setClientAddress(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                  placeholder="456 Client Ave"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Due Date *</label>
-                <input
-                  type="date"
-                  required
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Currency 🌍</label>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                >
-                  {CURRENCIES.map((curr) => (
-                    <option key={curr.code} value={curr.code}>
-                      {curr.flag} {curr.code} ({curr.symbol})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-2">Client Name *</label><input type="text" required value={clientName} onChange={(e) => setClientName(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="Acme Corp" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-2">Client Email *</label><input type="email" required value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="contact@acme.com" /></div>
+              <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Client Address *</label><input type="text" required value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="456 Client Ave" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-2">Due Date *</label><input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-2">Currency 🌍</label><select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white">{CURRENCIES.map((curr) => (<option key={curr.code} value={curr.code}>{curr.flag} {curr.code} ({curr.symbol})</option>))}</select></div>
             </div>
-
-            {clientName && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-emerald-600">
-                <UserPlus className="w-4 h-4" />
-                <span>This client will be auto-saved for future use</span>
-              </div>
-            )}
           </div>
 
+          {/* RECURRING INVOICE SECTION - NEW! */}
+          <div className="mb-8">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Repeat className="w-5 h-5 text-blue-600" />
+                    <span className="text-lg font-semibold text-gray-900">Make this a Recurring Invoice</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">Auto-generate this invoice on a schedule (weekly, monthly, etc.)</p>
+                </div>
+              </label>
+
+              {isRecurring && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 pl-8">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+                    <select
+                      value={recurringFrequency}
+                      onChange={(e) => setRecurringFrequency(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+                    >
+                      <option value="weekly">📅 Weekly</option>
+                      <option value="monthly">📅 Monthly</option>
+                      <option value="quarterly">📅 Quarterly (every 3 months)</option>
+                      <option value="yearly">📅 Yearly</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={recurringEndDate}
+                      onChange={(e) => setRecurringEndDate(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Leave empty for indefinite</p>
+                  </div>
+
+                  <div className="md:col-span-2 bg-white rounded-lg p-4 flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <div className="text-sm text-gray-700">
+                      <strong>Next invoice will be auto-created on:</strong>{' '}
+                      {dueDate && (() => {
+                        const next = calculateNextDate(recurringFrequency, new Date(dueDate));
+                        return next.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Line Items */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Line Items</h2>
@@ -371,27 +368,11 @@ function CreateInvoiceContent() {
             <div className="space-y-4">
               {items.map((item) => (
                 <div key={item.id} className="grid grid-cols-12 gap-4 items-end">
-                  <div className="col-span-12 md:col-span-5">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <input type="text" required value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="Service or product description" />
-                  </div>
-                  <div className="col-span-4 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Qty</label>
-                    <input type="number" required min="1" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" />
-                  </div>
-                  <div className="col-span-4 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Price ({currencySymbol})</label>
-                    <input type="number" required min="0" step="0.01" value={item.price} onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" />
-                  </div>
-                  <div className="col-span-3 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
-                    <div className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium">{formatCurrency(item.amount, currency)}</div>
-                  </div>
-                  <div className="col-span-1">
-                    {items.length > 1 && (
-                      <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg text-xl font-bold" title="Remove item">×</button>
-                    )}
-                  </div>
+                  <div className="col-span-12 md:col-span-5"><label className="block text-sm font-medium text-gray-700 mb-2">Description</label><input type="text" required value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="Service or product description" /></div>
+                  <div className="col-span-4 md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Qty</label><input type="number" required min="1" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" /></div>
+                  <div className="col-span-4 md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Price ({currencySymbol})</label><input type="number" required min="0" step="0.01" value={item.price} onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" /></div>
+                  <div className="col-span-3 md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Amount</label><div className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium">{formatCurrency(item.amount, currency)}</div></div>
+                  <div className="col-span-1">{items.length > 1 && (<button type="button" onClick={() => removeItem(item.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg text-xl font-bold" title="Remove item">×</button>)}</div>
                 </div>
               ))}
             </div>
