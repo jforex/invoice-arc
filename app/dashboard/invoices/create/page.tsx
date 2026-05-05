@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { CURRENCIES, formatCurrency, getCurrencySymbol } from '@/lib/currency';
+import { Users, UserPlus } from 'lucide-react';
 
 interface InvoiceItem {
   id: string;
@@ -14,12 +15,24 @@ interface InvoiceItem {
   amount: number;
 }
 
-export default function CreateInvoicePage() {
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+}
+
+function CreateInvoiceContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preSelectedClientId = searchParams.get('client');
+  
   const [loading, setLoading] = useState(false);
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
+  const [savedClients, setSavedClients] = useState<Client[]>([]);
+  const [showClientSelector, setShowClientSelector] = useState(false);
 
-  // Form state
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientAddress, setClientAddress] = useState('');
@@ -31,7 +44,6 @@ export default function CreateInvoicePage() {
     { id: uuidv4(), description: '', quantity: 1, price: 0, amount: 0 }
   ]);
 
-  // Load company defaults on mount
   useEffect(() => {
     loadDefaults();
   }, []);
@@ -49,12 +61,30 @@ export default function CreateInvoicePage() {
         setTaxRate(company.default_tax_rate || 0.001);
         setNotes(company.default_notes || '');
 
-        // Set default due date based on payment terms
         const days = company.default_payment_terms || 30;
         const dueDateObj = new Date();
         dueDateObj.setDate(dueDateObj.getDate() + days);
         setDueDate(dueDateObj.toISOString().split('T')[0]);
       }
+
+      // Load saved clients
+      const { data: clients } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name');
+
+      if (clients) {
+        setSavedClients(clients);
+
+        // Pre-select client if URL param exists
+        if (preSelectedClientId) {
+          const client = clients.find(c => c.id === preSelectedClientId);
+          if (client) {
+            selectClient(client);
+          }
+        }
+      }
+
       setDefaultsLoaded(true);
     } catch (error) {
       console.error('Error loading defaults:', error);
@@ -62,14 +92,25 @@ export default function CreateInvoicePage() {
     }
   };
 
+  const selectClient = (client: Client) => {
+    setClientName(client.name);
+    setClientEmail(client.email);
+    setClientAddress(client.address || '');
+    setShowClientSelector(false);
+  };
+
+  const clearClient = () => {
+    setClientName('');
+    setClientEmail('');
+    setClientAddress('');
+  };
+
   const addItem = () => {
     setItems([...items, { id: uuidv4(), description: '', quantity: 1, price: 0, amount: 0 }]);
   };
 
   const removeItem = (id: string) => {
-    if (items.length > 1) {
-      setItems(items.filter(item => item.id !== id));
-    }
+    if (items.length > 1) setItems(items.filter(item => item.id !== id));
   };
 
   const updateItem = (id: string, field: keyof InvoiceItem, value: string | number) => {
@@ -123,10 +164,7 @@ export default function CreateInvoicePage() {
           issue_date: new Date().toISOString().split('T')[0],
           due_date: dueDate,
           status: 'pending',
-          subtotal,
-          tax,
-          total,
-          notes,
+          subtotal, tax, total, notes,
           public_token: publicToken,
           currency: currency,
         })
@@ -148,6 +186,25 @@ export default function CreateInvoicePage() {
         .insert(itemsToInsert);
 
       if (itemsError) throw itemsError;
+
+      // Auto-save client if not exists
+      const { data: existingClient } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', clientEmail)
+        .single();
+
+      if (!existingClient) {
+        const { data: companies } = await supabase.from('companies').select('id').limit(1);
+        if (companies && companies.length > 0) {
+          await supabase.from('clients').insert({
+            company_id: companies[0].id,
+            name: clientName,
+            email: clientEmail,
+            address: clientAddress || null,
+          });
+        }
+      }
 
       const { data: companies } = await supabase.from('companies').select('id').limit(1);
       if (companies && companies.length > 0) {
@@ -189,19 +246,55 @@ export default function CreateInvoicePage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-8">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4"
-          >
+          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4">
             ← Back to Dashboard
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Create New Invoice</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
-          {/* Client Information */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Client Information</h2>
+          {/* Client Selector */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold text-gray-900">Client Information</h2>
+              {savedClients.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowClientSelector(!showClientSelector)}
+                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                >
+                  <Users className="w-4 h-4" />
+                  {showClientSelector ? 'Hide' : 'Select Saved Client'}
+                </button>
+              )}
+            </div>
+
+            {showClientSelector && savedClients.length > 0 && (
+              <div className="mb-4 bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                <p className="text-sm text-gray-600 mb-3">Click a client to auto-fill their info:</p>
+                <div className="space-y-2">
+                  {savedClients.map(client => (
+                    <button
+                      key={client.id}
+                      type="button"
+                      onClick={() => selectClient(client)}
+                      className="w-full text-left p-3 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                          {client.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{client.name}</p>
+                          <p className="text-sm text-gray-500">{client.email}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Client Name *</label>
@@ -214,7 +307,6 @@ export default function CreateInvoicePage() {
                   placeholder="Acme Corp"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Client Email *</label>
                 <input
@@ -226,7 +318,6 @@ export default function CreateInvoicePage() {
                   placeholder="contact@acme.com"
                 />
               </div>
-
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Client Address *</label>
                 <input
@@ -238,7 +329,6 @@ export default function CreateInvoicePage() {
                   placeholder="456 Client Ave"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Due Date *</label>
                 <input
@@ -249,12 +339,8 @@ export default function CreateInvoicePage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                 />
               </div>
-
-              {/* CURRENCY SELECTOR - NEW! */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Currency 🌍
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Currency 🌍</label>
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
@@ -268,80 +354,42 @@ export default function CreateInvoicePage() {
                 </select>
               </div>
             </div>
+
+            {clientName && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-emerald-600">
+                <UserPlus className="w-4 h-4" />
+                <span>This client will be auto-saved for future use</span>
+              </div>
+            )}
           </div>
 
-          {/* Line Items */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Line Items</h2>
-              <button
-                type="button"
-                onClick={addItem}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-              >
-                + Add Item
-              </button>
+              <button type="button" onClick={addItem} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">+ Add Item</button>
             </div>
-
             <div className="space-y-4">
               {items.map((item) => (
                 <div key={item.id} className="grid grid-cols-12 gap-4 items-end">
                   <div className="col-span-12 md:col-span-5">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <input
-                      type="text"
-                      required
-                      value={item.description}
-                      onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                      placeholder="Service or product description"
-                    />
+                    <input type="text" required value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="Service or product description" />
                   </div>
-
                   <div className="col-span-4 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Qty</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                    />
+                    <input type="number" required min="1" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" />
                   </div>
-
                   <div className="col-span-4 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Price ({currencySymbol})
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="0.01"
-                      value={item.price}
-                      onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Price ({currencySymbol})</label>
+                    <input type="number" required min="0" step="0.01" value={item.price} onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" />
                   </div>
-
                   <div className="col-span-3 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
-                    <div className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium">
-                      {formatCurrency(item.amount, currency)}
-                    </div>
+                    <div className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium">{formatCurrency(item.amount, currency)}</div>
                   </div>
-
                   <div className="col-span-1">
                     {items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg text-xl font-bold"
-                        title="Remove item"
-                      >
-                        ×
-                      </button>
+                      <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg text-xl font-bold" title="Remove item">×</button>
                     )}
                   </div>
                 </div>
@@ -349,55 +397,33 @@ export default function CreateInvoicePage() {
             </div>
           </div>
 
-          {/* Totals */}
           <div className="mb-8 flex justify-end">
             <div className="w-full md:w-80 space-y-2">
-              <div className="flex justify-between text-gray-600">
-                <span>Subtotal:</span>
-                <span className="font-semibold text-gray-900">{formatCurrency(subtotal, currency)}</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Tax ({(taxRate * 100).toFixed(3)}%):</span>
-                <span className="font-semibold text-gray-900">{formatCurrency(tax, currency)}</span>
-              </div>
-              <div className="border-t pt-2 flex justify-between text-lg font-bold text-gray-900">
-                <span>Total:</span>
-                <span>{formatCurrency(total, currency)}</span>
-              </div>
+              <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span className="font-semibold text-gray-900">{formatCurrency(subtotal, currency)}</span></div>
+              <div className="flex justify-between text-gray-600"><span>Tax ({(taxRate * 100).toFixed(3)}%):</span><span className="font-semibold text-gray-900">{formatCurrency(tax, currency)}</span></div>
+              <div className="border-t pt-2 flex justify-between text-lg font-bold text-gray-900"><span>Total:</span><span>{formatCurrency(total, currency)}</span></div>
             </div>
           </div>
 
-          {/* Notes */}
           <div className="mb-8">
             <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-              placeholder="Payment via USDC • 0% fees • 10-second settlement"
-            />
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="Payment via USDC • 0% fees • 10-second settlement" />
           </div>
 
-          {/* Submit Button */}
           <div className="flex gap-4">
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard')}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Creating...' : 'Create Invoice'}
-            </button>
+            <button type="button" onClick={() => router.push('/dashboard')} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg">Cancel</button>
+            <button type="submit" disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Creating...' : 'Create Invoice'}</button>
           </div>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function CreateInvoicePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CreateInvoiceContent />
+    </Suspense>
   );
 }
