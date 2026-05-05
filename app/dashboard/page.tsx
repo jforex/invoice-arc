@@ -15,7 +15,8 @@ import {
   Settings,
   BarChart3,
   Users,
-  Repeat
+  Repeat,
+  Bell
 } from 'lucide-react';
 
 interface Invoice {
@@ -39,15 +40,11 @@ interface Stats {
 
 export default function Dashboard() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    totalRevenue: 0,
-    invoicesSent: 0,
-    pendingAmount: 0,
-    paidThisMonth: 0
-  });
+  const [stats, setStats] = useState<Stats>({ totalRevenue: 0, invoicesSent: 0, pendingAmount: 0, paidThisMonth: 0 });
   const [loading, setLoading] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [recurringCount, setRecurringCount] = useState(0);
+  const [overdueCount, setOverdueCount] = useState(0);
 
   useEffect(() => {
     loadDashboardData();
@@ -61,9 +58,7 @@ export default function Dashboard() {
         .limit(1)
         .single();
 
-      if (company?.default_currency) {
-        setDefaultCurrency(company.default_currency);
-      }
+      if (company?.default_currency) setDefaultCurrency(company.default_currency);
 
       const { data: invoicesData } = await supabase
         .from('invoices')
@@ -76,7 +71,19 @@ export default function Dashboard() {
         const pendingAmount = invoicesData.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.total, 0);
         const paidThisMonth = invoicesData.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total, 0);
         const recurring = invoicesData.filter(inv => (inv as any).is_recurring && (inv as any).recurring_active).length;
+        
+        // Calculate overdue
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const overdue = invoicesData.filter(inv => {
+          if (inv.status === 'paid') return false;
+          const dueDate = new Date(inv.due_date);
+          dueDate.setHours(0, 0, 0, 0);
+          return dueDate < today;
+        }).length;
+        
         setRecurringCount(recurring);
+        setOverdueCount(overdue);
         setStats({ totalRevenue, invoicesSent: invoicesData.length, pendingAmount, paidThisMonth });
       }
     } catch (error) {
@@ -93,6 +100,15 @@ export default function Dashboard() {
       case 'overdue': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const isOverdue = (invoice: Invoice) => {
+    if (invoice.status === 'paid') return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(invoice.due_date);
+    due.setHours(0, 0, 0, 0);
+    return due < today;
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -114,7 +130,15 @@ export default function Dashboard() {
               <Link href="/dashboard/invoices/create" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
                 <Plus className="w-5 h-5" />Create Invoice
               </Link>
-              <Link href="/recurring" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors relative" title="Recurring Invoices">
+              <Link href="/reminders" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors relative" title="Reminders">
+                <Bell className="w-5 h-5" />
+                {overdueCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                    {overdueCount}
+                  </span>
+                )}
+              </Link>
+              <Link href="/recurring" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors relative" title="Recurring">
                 <Repeat className="w-5 h-5" />
                 {recurringCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
@@ -137,6 +161,26 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Overdue Alert */}
+        {overdueCount > 0 && (
+          <Link href="/reminders" className="block mb-6">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 hover:bg-red-100 transition-colors">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-red-900">⚠️ You have {overdueCount} overdue {overdueCount === 1 ? 'invoice' : 'invoices'}</p>
+                    <p className="text-sm text-red-700">Click here to send reminders</p>
+                  </div>
+                </div>
+                <span className="text-red-600 font-medium text-sm">Manage Reminders →</span>
+              </div>
+            </div>
+          </Link>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
@@ -178,14 +222,13 @@ export default function Dashboard() {
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-lg font-semibold text-gray-900">Recent Invoices</h2>
             <div className="flex gap-2 flex-wrap">
+              <Link href="/reminders" className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors flex items-center gap-2 relative">
+                <Bell className="w-4 h-4" />Reminders
+                {overdueCount > 0 && (<span className="bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">{overdueCount}</span>)}
+              </Link>
               <Link href="/recurring" className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2">
-                <Repeat className="w-4 h-4" />
-                Recurring
-                {recurringCount > 0 && (
-                  <span className="bg-indigo-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                    {recurringCount}
-                  </span>
-                )}
+                <Repeat className="w-4 h-4" />Recurring
+                {recurringCount > 0 && (<span className="bg-indigo-600 text-white text-xs font-bold rounded-full px-2 py-0.5">{recurringCount}</span>)}
               </Link>
               <Link href="/clients" className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg font-medium hover:bg-emerald-100 transition-colors flex items-center gap-2"><Users className="w-4 h-4" />Clients</Link>
               <Link href="/analytics" className="px-4 py-2 bg-purple-50 text-purple-600 rounded-lg font-medium hover:bg-purple-100 transition-colors flex items-center gap-2"><BarChart3 className="w-4 h-4" />Analytics</Link>
@@ -222,9 +265,8 @@ export default function Dashboard() {
                           <div>
                             <div className="text-sm font-medium text-gray-900 flex items-center gap-1">
                               {invoice.invoice_number}
-                              {(invoice as any).is_recurring && (
-                                <Repeat className="w-3 h-3 text-blue-500" />
-                              )}
+                              {(invoice as any).is_recurring && (<Repeat className="w-3 h-3 text-blue-500" />)}
+                              {isOverdue(invoice) && (<Bell className="w-3 h-3 text-red-500" />)}
                             </div>
                             <div className="text-sm text-gray-500">{formatDate(invoice.issue_date)}</div>
                           </div>
@@ -235,7 +277,11 @@ export default function Dashboard() {
                         <div className="text-sm font-bold text-gray-900">{formatCurrency(invoice.total, invoice.currency || 'USD')}</div>
                         <div className="text-xs text-gray-500">{invoice.currency || 'USD'}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap"><span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span></td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isOverdue(invoice) ? 'bg-red-100 text-red-800' : getStatusColor(invoice.status)}`}>
+                          {isOverdue(invoice) ? 'Overdue' : invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-900">{formatDate(invoice.due_date)}</div></td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <Link href={`/dashboard/invoices/${invoice.id}`} className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"><Eye className="w-4 h-4" />View</Link>
