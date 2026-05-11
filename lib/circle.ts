@@ -98,12 +98,26 @@ export async function createTransferChallenge(
 ): Promise<{ challengeId: string }> {
   const client = getCircleClient();
 
-  const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
+  // First, get the wallet's token balances to find the USDC token ID
+  const balanceResponse = await (client as any).getWalletTokenBalance({
+    userToken,
+    walletId: walletId,
+  });
+
+
+  const tokenBalances = balanceResponse.data?.tokenBalances || [];
+  const usdcBalance = tokenBalances.find((t: any) => 
+    t.token?.symbol === 'USDC' || t.token?.name?.includes('USD')
+  );
+
+  if (!usdcBalance?.token?.id) {
+    throw new Error('USDC token not found in wallet. Get testnet USDC from faucet first.');
+  }
 
   const response = await client.createTransaction({
     userToken,
     walletId,
-    tokenId: USDC_ADDRESS,
+    tokenId: usdcBalance.token.id,
     destinationAddress,
     amounts: [amount],
     fee: {

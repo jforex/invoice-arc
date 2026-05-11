@@ -2,18 +2,13 @@
 
 import { use, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency, getCurrency } from '@/lib/currency';
+import { formatCurrency } from '@/lib/currency';
 import {
   CheckCircle,
   Clock,
-  FileText,
-  Mail,
-  MapPin,
   Wallet,
   X,
-  ExternalLink,
   Zap,
-  Copy,
 } from 'lucide-react';
 
 interface InvoiceItem {
@@ -45,8 +40,6 @@ interface Invoice {
 interface Company {
   name?: string;
   email?: string;
-  address?: string;
-  phone?: string;
   logo_url?: string;
   brand_color?: string;
   circle_wallet_address?: string;
@@ -63,10 +56,8 @@ export default function PublicInvoicePage({
   const [company, setCompany] = useState<Company>({});
   const [loading, setLoading] = useState(true);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [payerWalletId, setPayerWalletId] = useState('');
   const [paying, setPaying] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<string>('');
-  const [txHash, setTxHash] = useState('');
 
   useEffect(() => {
     loadInvoice();
@@ -108,74 +99,81 @@ export default function PublicInvoicePage({
   };
 
   const handlePayment = async () => {
-    if (!payerWalletId.trim()) {
-      alert('Please enter your wallet ID');
-      return;
-    }
-
     if (!invoice) return;
 
     setPaying(true);
-    setPaymentStatus('Initiating payment...');
+    setPaymentStatus('Initializing your wallet...');
 
     try {
-      const response = await fetch('/api/pay-invoice', {
+      // Step 1: Init payer user
+      const initResponse = await fetch('/api/init-user', { method: 'POST' });
+      const initData = await initResponse.json();
+      if (!initResponse.ok) throw new Error(initData.error);
+
+      if (!initData.pinSet) {
+        setPaymentStatus('You need to set up your wallet first. Visit /wallet to create one.');
+        setPaying(false);
+        return;
+      }
+
+      setPaymentStatus('Creating payment...');
+
+      // Step 2: Create payment challenge
+      const payResponse = await fetch('/api/pay-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           invoiceId: invoice.id,
-          payerWalletId: payerWalletId.trim(),
+          payerUserId: initData.userId,
         }),
       });
 
-      const data = await response.json();
+      const payData = await payResponse.json();
+      if (!payResponse.ok) throw new Error(payData.error);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Payment failed');
-      }
+      setPaymentStatus('Authorize the payment with your PIN...');
 
-      setPaymentStatus('Payment sent! Confirming on Arc blockchain...');
-      setTxHash(data.transactionId);
+      // Step 3: Execute challenge with SDK
+      const { W3SSdk } = await import('@circle-fin/w3s-pw-web-sdk');
+      const sdk = new W3SSdk({
+        appSettings: {
+          appId: process.env.NEXT_PUBLIC_CIRCLE_APP_ID || '',
+        },
+      });
 
-      // Poll for confirmation
-      let attempts = 0;
-      const maxAttempts = 30;
-      
-      const checkStatus = async () => {
-        if (attempts >= maxAttempts) {
-          setPaymentStatus('Payment submitted! Check explorer for status.');
+      sdk.setAuthentication({
+        userToken: payData.userToken,
+        encryptionKey: payData.encryptionKey,
+      });
+
+      sdk.execute(payData.challengeId, async (error: any, result: any) => {
+    
+        if (error) {
+          setPaymentStatus(`Payment failed: ${error.message || 'Unknown error'}`);
           setPaying(false);
-          loadInvoice();
           return;
         }
 
-        try {
-          const statusResponse = await fetch(
-            `/api/pay-invoice?transactionId=${data.transactionId}`
-          );
-          const statusData = await statusResponse.json();
+        if (result?.status === 'COMPLETE') {
+          setPaymentStatus('✓ Payment sent! Confirming on Arc blockchain...');
 
-          if (statusData.state === 'COMPLETE' || statusData.state === 'CONFIRMED') {
-            setPaymentStatus('✓ Payment confirmed on Arc blockchain!');
-            setPaying(false);
-            setTimeout(() => loadInvoice(), 1500);
-            return;
-          } else if (statusData.state === 'FAILED' || statusData.state === 'CANCELED') {
-            setPaymentStatus('✗ Payment failed. Please try again.');
-            setPaying(false);
-            return;
-          }
+          // Step 4: Confirm payment in database
+          await fetch('/api/confirm-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              invoiceId: invoice.id,
+              transactionId: result.data?.transactionId || result.type,
+            }),
+          });
 
-          attempts++;
-          setTimeout(checkStatus, 2000);
-        } catch (err) {
-          console.error('Status check error:', err);
-          attempts++;
-          setTimeout(checkStatus, 2000);
+          setPaymentStatus('✓ Payment confirmed!');
+          setTimeout(() => {
+            loadInvoice();
+            setPaying(false);
+          }, 2000);
         }
-      };
-
-      setTimeout(checkStatus, 2000);
+      });
     } catch (error: any) {
       console.error('Payment error:', error);
       setPaymentStatus(`Error: ${error.message}`);
@@ -220,7 +218,6 @@ export default function PublicInvoicePage({
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Status Banner */}
         {isPaid && (
           <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4 mb-6 flex items-center gap-3">
             <CheckCircle className="w-8 h-8 text-green-600" />
@@ -228,31 +225,13 @@ export default function PublicInvoicePage({
               <h3 className="font-bold text-green-900">Payment Received</h3>
               <p className="text-sm text-green-700">
                 This invoice has been paid in full
-                {invoice.transaction_hash && (
-                  <>
-                    {' • '}
-                    <a
-                      href={`https://testnet.arcscan.app/tx/${invoice.transaction_hash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-600 underline hover:text-green-800"
-                    >
-                      View transaction
-                    </a>
-                  </>
-                )}
               </p>
             </div>
           </div>
         )}
 
-        {/* Invoice Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Header */}
-          <div
-            className="p-8 text-white relative"
-            style={{ backgroundColor: brandColor }}
-          >
+          <div className="p-8 text-white" style={{ backgroundColor: brandColor }}>
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 {company.logo_url && (
@@ -269,7 +248,6 @@ export default function PublicInvoicePage({
                   )}
                 </div>
               </div>
-
               <div className="text-right">
                 <p className="text-white/80 text-sm">Invoice</p>
                 <p className="text-2xl font-bold">{invoice.invoice_number}</p>
@@ -280,9 +258,7 @@ export default function PublicInvoicePage({
             </div>
           </div>
 
-          {/* Body */}
           <div className="p-8">
-            {/* Client & Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               <div>
                 <p className="text-xs text-gray-500 mb-2 font-semibold tracking-wider">BILL TO</p>
@@ -290,11 +266,8 @@ export default function PublicInvoicePage({
                 <p className="text-gray-600 text-sm">{invoice.client_email}</p>
                 <p className="text-gray-600 text-sm">{invoice.client_address}</p>
               </div>
-
               <div className="md:text-right">
-                <p className="text-xs text-gray-500 mb-2 font-semibold tracking-wider">
-                  DUE DATE
-                </p>
+                <p className="text-xs text-gray-500 mb-2 font-semibold tracking-wider">DUE DATE</p>
                 <p className="font-bold text-gray-900">{formatDate(invoice.due_date)}</p>
                 <div className="mt-3">
                   {isPaid ? (
@@ -312,23 +285,14 @@ export default function PublicInvoicePage({
               </div>
             </div>
 
-            {/* Items Table */}
             <div className="mb-8">
               <table className="w-full">
                 <thead>
                   <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-3 text-xs font-semibold text-gray-600 tracking-wider">
-                      DESCRIPTION
-                    </th>
-                    <th className="text-center py-3 text-xs font-semibold text-gray-600 tracking-wider">
-                      QTY
-                    </th>
-                    <th className="text-right py-3 text-xs font-semibold text-gray-600 tracking-wider">
-                      PRICE
-                    </th>
-                    <th className="text-right py-3 text-xs font-semibold text-gray-600 tracking-wider">
-                      AMOUNT
-                    </th>
+                    <th className="text-left py-3 text-xs font-semibold text-gray-600 tracking-wider">DESCRIPTION</th>
+                    <th className="text-center py-3 text-xs font-semibold text-gray-600 tracking-wider">QTY</th>
+                    <th className="text-right py-3 text-xs font-semibold text-gray-600 tracking-wider">PRICE</th>
+                    <th className="text-right py-3 text-xs font-semibold text-gray-600 tracking-wider">AMOUNT</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -348,7 +312,6 @@ export default function PublicInvoicePage({
               </table>
             </div>
 
-            {/* Totals */}
             <div className="flex justify-end mb-8">
               <div className="w-full md:w-80 space-y-2">
                 <div className="flex justify-between text-gray-600">
@@ -372,7 +335,6 @@ export default function PublicInvoicePage({
               </div>
             </div>
 
-            {/* Notes */}
             {invoice.notes && (
               <div className="mb-8 bg-gray-50 rounded-lg p-4">
                 <p className="text-xs text-gray-500 mb-2 font-semibold tracking-wider">NOTES</p>
@@ -380,7 +342,6 @@ export default function PublicInvoicePage({
               </div>
             )}
 
-            {/* Payment Section */}
             {!isPaid && company.circle_wallet_address && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200">
                 <div className="flex items-start gap-4 mb-4">
@@ -388,49 +349,41 @@ export default function PublicInvoicePage({
                     <Zap className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">
-                      Pay Instantly with USDC
-                    </h3>
+                    <h3 className="text-xl font-bold text-gray-900">Pay Instantly with USDC</h3>
                     <p className="text-sm text-gray-600 mt-1">
                       Sub-second settlement on Arc Testnet • 0% fees
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => setShowPayModal(true)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Wallet className="w-5 h-5" />
-                    Pay {formatCurrency(invoice.total, invoice.currency || 'USD')} with USDC
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowPayModal(true)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-2"
+                >
+                  <Wallet className="w-5 h-5" />
+                  Pay {formatCurrency(invoice.total, invoice.currency || 'USD')} with USDC
+                </button>
 
                 <p className="text-xs text-gray-500 mt-3 text-center">
-                  🧪 Currently on Arc Testnet • Mainnet launching 2026
+                  🧪 Currently on Arc Testnet
                 </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
           Powered by InvFlow • Arc Blockchain
         </p>
       </div>
 
-      {/* Payment Modal */}
       {showPayModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Pay with USDC</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  on Arc Testnet
-                </p>
+                <p className="text-sm text-gray-600 mt-1">on Arc Testnet</p>
               </div>
               <button
                 onClick={() => !paying && setShowPayModal(false)}
@@ -451,36 +404,15 @@ export default function PublicInvoicePage({
                   <p className="text-sm text-blue-900 mt-1">
                     <strong>To:</strong> {company.name}
                   </p>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Your Circle Wallet ID
-                  </label>
-                  <input
-                    type="text"
-                    value={payerWalletId}
-                    onChange={(e) => setPayerWalletId(e.target.value)}
-                    placeholder="e.g., 8ae97407-c6f5-5b27-80df-..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                  />
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 For testing: Get a wallet ID from{' '}
-                    <a
-                      href="https://console.circle.com/wallets/dev/wallets"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      Circle Console
-                    </a>
+                  <p className="text-xs text-blue-700 mt-2">
+                    You'll be asked to enter your wallet PIN to authorize the payment.
                   </p>
                 </div>
 
                 <button
                   onClick={handlePayment}
-                  disabled={paying || !payerWalletId.trim()}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={paying}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50"
                 >
                   {paying ? 'Processing...' : 'Send Payment'}
                 </button>
@@ -489,24 +421,15 @@ export default function PublicInvoicePage({
               <div className="text-center py-6">
                 {paymentStatus.includes('✓') ? (
                   <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                ) : paymentStatus.includes('Error') || paymentStatus.includes('✗') ? (
+                ) : paymentStatus.includes('Error') || paymentStatus.includes('failed') ? (
                   <X className="w-16 h-16 text-red-500 mx-auto mb-4" />
                 ) : (
                   <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
                 )}
 
-                <p className="text-lg font-semibold text-gray-900 mb-2">
-                  {paymentStatus}
-                </p>
+                <p className="text-lg font-semibold text-gray-900 mb-2">{paymentStatus}</p>
 
-                {txHash && (
-                  <div className="mt-4 bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">Transaction ID:</p>
-                    <p className="text-xs font-mono text-gray-700 break-all">{txHash}</p>
-                  </div>
-                )}
-
-                {paymentStatus.includes('✓') && (
+                {paymentStatus.includes('✓ Payment confirmed') && (
                   <button
                     onClick={() => setShowPayModal(false)}
                     className="mt-6 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg"
@@ -515,12 +438,9 @@ export default function PublicInvoicePage({
                   </button>
                 )}
 
-                {(paymentStatus.includes('Error') || paymentStatus.includes('✗')) && (
+                {(paymentStatus.includes('Error') || paymentStatus.includes('failed')) && (
                   <button
-                    onClick={() => {
-                      setPaymentStatus('');
-                      setTxHash('');
-                    }}
+                    onClick={() => setPaymentStatus('')}
                     className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg"
                   >
                     Try Again
