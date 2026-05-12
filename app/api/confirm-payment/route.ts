@@ -11,7 +11,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { invoiceId, transactionId } = body;
 
-    console.log('Confirm payment called:', { invoiceId, transactionId });
 
     if (!invoiceId) {
       return NextResponse.json({ error: 'Invoice ID required' }, { status: 400 });
@@ -37,8 +36,6 @@ export async function POST(request: NextRequest) {
       console.error('Supabase error:', error);
       throw error;
     }
-
-    console.log('Updated invoice:', data);
 
     return NextResponse.json({
       success: true,
