@@ -1,24 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase-server';
 import { createUserToken, createTransferChallenge } from '@/lib/circle';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
     const { invoiceId, payerUserId } = await request.json();
 
     if (!invoiceId || !payerUserId) {
-      return NextResponse.json(
-        { error: 'Invoice ID and payer user ID required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invoice ID and payer user ID required' }, { status: 400 });
     }
 
-    // Get invoice
+    const supabase = await createClient();
+
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*')
@@ -33,29 +26,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invoice already paid' }, { status: 400 });
     }
 
-    // Get recipient's wallet address
-    const { data: companies } = await supabase
+    const { data: recipientCompany } = await supabase
       .from('companies')
       .select('circle_wallet_address')
-      .not('circle_wallet_address', 'is', null)
-      .limit(1)
+      .eq('id', invoice.company_id)
       .single();
 
-    if (!companies?.circle_wallet_address) {
-      return NextResponse.json(
-        { error: 'Recipient wallet not configured' },
-        { status: 400 }
-      );
+    if (!recipientCompany?.circle_wallet_address) {
+      return NextResponse.json({ error: 'Recipient wallet not configured' }, { status: 400 });
     }
 
-    // Get payer's user token and wallets
     const { userToken, encryptionKey } = await createUserToken(payerUserId);
 
-    // Get payer's wallet
     const { initiateUserControlledWalletsClient } = await import('@circle-fin/user-controlled-wallets');
-    const client = initiateUserControlledWalletsClient({
-      apiKey: process.env.CIRCLE_API_KEY!,
-    });
+    const client = initiateUserControlledWalletsClient({ apiKey: process.env.CIRCLE_API_KEY! });
 
     const walletsResponse = await client.listWallets({ userToken });
     const payerWallet = walletsResponse.data?.wallets?.[0];
@@ -64,12 +48,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payer has no wallet' }, { status: 400 });
     }
 
-    // Create transfer challenge
     const amount = invoice.total.toFixed(2);
     const { challengeId } = await createTransferChallenge(
       userToken,
       payerWallet.id,
-      companies.circle_wallet_address,
+      recipientCompany.circle_wallet_address,
       amount
     );
 
@@ -81,9 +64,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error creating payment challenge:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create payment' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Failed' }, { status: 500 });
   }
 }

@@ -48,7 +48,7 @@ export default function SignupPage() {
       });
 
     if (companyError) {
-      setError('Account created but company setup failed. Please contact support.');
+      setError(`Company setup failed: ${companyError.message}`);
       setLoading(false);
       return;
     }

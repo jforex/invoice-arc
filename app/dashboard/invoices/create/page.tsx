@@ -1,410 +1,238 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { v4 as uuidv4 } from 'uuid';
-import { CURRENCIES, formatCurrency, getCurrencySymbol } from '@/lib/currency';
-import { Users, UserPlus, Repeat, Calendar } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase-client';
+import { formatCurrency, CURRENCIES } from '@/lib/currency';
+import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
 
-interface InvoiceItem {
-  id: string;
-  description: string;
-  quantity: number;
-  price: number;
-  amount: number;
-}
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-}
-
-function CreateInvoiceContent() {
+export default function CreateInvoicePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const preSelectedClientId = searchParams.get('client');
-  
   const [loading, setLoading] = useState(false);
-  const [defaultsLoaded, setDefaultsLoaded] = useState(false);
-  const [savedClients, setSavedClients] = useState<Client[]>([]);
-  const [showClientSelector, setShowClientSelector] = useState(false);
+  const [companyId, setCompanyId] = useState('');
+  const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [clients, setClients] = useState<any[]>([]);
+  const [selectedClient, setSelectedClient] = useState('');
 
-  const [clientName, setClientName] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientAddress, setClientAddress] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [notes, setNotes] = useState('');
-  const [currency, setCurrency] = useState('USD');
-  const [taxRate, setTaxRate] = useState(0.001);
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { id: uuidv4(), description: '', quantity: 1, price: 0, amount: 0 }
-  ]);
+  const [invoice, setInvoice] = useState({
+    invoice_number: `INV-${String(Date.now()).slice(-6)}`,
+    client_name: '',
+    client_email: '',
+    client_address: '',
+    issue_date: new Date().toISOString().split('T')[0],
+    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    notes: 'Payment via USDC • 0% fees • 10-second settlement',
+    currency: 'USD',
+    tax_rate: 0,
+    is_recurring: false,
+    recurring_frequency: 'monthly',
+  });
 
-  // Recurring fields
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurringFrequency, setRecurringFrequency] = useState('monthly');
-  const [recurringEndDate, setRecurringEndDate] = useState('');
+  const [items, setItems] = useState([{ description: '', quantity: 1, price: 0 }]);
 
   useEffect(() => {
-    loadDefaults();
+    loadData();
   }, []);
 
-  const loadDefaults = async () => {
-    try {
-      const { data: company } = await supabase
-        .from('companies')
-        .select('default_currency, default_tax_rate, default_payment_terms, default_notes')
-        .limit(1)
-        .single();
+  const loadData = async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      if (company) {
-        setCurrency(company.default_currency || 'USD');
-        setTaxRate(company.default_tax_rate || 0.001);
-        setNotes(company.default_notes || '');
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id, default_currency, default_tax_rate, invoice_notes')
+      .eq('user_id', user.id)
+      .single();
 
-        const days = company.default_payment_terms || 30;
-        const dueDateObj = new Date();
-        dueDateObj.setDate(dueDateObj.getDate() + days);
-        setDueDate(dueDateObj.toISOString().split('T')[0]);
-      }
+    if (company) {
+      setCompanyId(company.id);
+      setDefaultCurrency(company.default_currency || 'USD');
+      setInvoice(prev => ({
+        ...prev,
+        currency: company.default_currency || 'USD',
+        tax_rate: company.default_tax_rate || 0,
+        notes: company.invoice_notes || prev.notes,
+      }));
 
-      const { data: clients } = await supabase
+      const { data: clientsData } = await supabase
         .from('clients')
         .select('*')
-        .order('name');
-
-      if (clients) {
-        setSavedClients(clients);
-        if (preSelectedClientId) {
-          const client = clients.find(c => c.id === preSelectedClientId);
-          if (client) selectClient(client);
-        }
-      }
-      setDefaultsLoaded(true);
-    } catch (error) {
-      console.error('Error loading defaults:', error);
-      setDefaultsLoaded(true);
+        .eq('company_id', company.id);
+      if (clientsData) setClients(clientsData);
     }
   };
 
-  const selectClient = (client: Client) => {
-    setClientName(client.name);
-    setClientEmail(client.email);
-    setClientAddress(client.address || '');
-    setShowClientSelector(false);
-  };
-
-  const addItem = () => {
-    setItems([...items, { id: uuidv4(), description: '', quantity: 1, price: 0, amount: 0 }]);
-  };
-
-  const removeItem = (id: string) => {
-    if (items.length > 1) setItems(items.filter(item => item.id !== id));
-  };
-
-  const updateItem = (id: string, field: keyof InvoiceItem, value: string | number) => {
-    setItems(items.map(item => {
-      if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
-        if (field === 'quantity' || field === 'price') {
-          updatedItem.amount = updatedItem.quantity * updatedItem.price;
-        }
-        return updatedItem;
+  const handleClientSelect = (clientId: string) => {
+    setSelectedClient(clientId);
+    if (clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (client) {
+        setInvoice({
+          ...invoice,
+          client_name: client.name,
+          client_email: client.email,
+          client_address: client.address || '',
+        });
       }
-      return item;
-    }));
-  };
-
-  const calculateTotals = () => {
-    const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
-    const tax = subtotal * taxRate;
-    const total = subtotal + tax;
-    return { subtotal, tax, total };
-  };
-
-  const calculateNextDate = (frequency: string, fromDate: Date): Date => {
-    const next = new Date(fromDate);
-    switch (frequency) {
-      case 'weekly': next.setDate(next.getDate() + 7); break;
-      case 'monthly': next.setMonth(next.getMonth() + 1); break;
-      case 'quarterly': next.setMonth(next.getMonth() + 3); break;
-      case 'yearly': next.setFullYear(next.getFullYear() + 1); break;
     }
-    return next;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const addItem = () => setItems([...items, { description: '', quantity: 1, price: 0 }]);
+  const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, field: string, value: any) => {
+    const updated = [...items];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setItems(updated);
+  };
+
+  const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+  const tax = subtotal * (invoice.tax_rate / 100);
+  const total = subtotal + tax;
+
+  const handleSubmit = async () => {
     setLoading(true);
-
     try {
-      const { data: lastInvoice } = await supabase
+      const supabase = createClient();
+      
+      const publicToken = crypto.randomUUID();
+
+      const { data: newInvoice, error } = await supabase
         .from('invoices')
-        .select('invoice_number')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      let nextNumber = 1;
-      if (lastInvoice && lastInvoice.length > 0) {
-        const lastNumber = parseInt(lastInvoice[0].invoice_number.replace('INV-', ''));
-        nextNumber = lastNumber + 1;
-      }
-
-      const invoiceNumber = `INV-${String(nextNumber).padStart(3, '0')}`;
-      const { subtotal, tax, total } = calculateTotals();
-      const publicToken = uuidv4();
-
-      // Calculate next recurring date
-      const recurringNextDate = isRecurring ? calculateNextDate(recurringFrequency, new Date(dueDate)) : null;
-
-      const invoiceData: any = {
-        invoice_number: invoiceNumber,
-        client_name: clientName,
-        client_email: clientEmail,
-        client_address: clientAddress,
-        issue_date: new Date().toISOString().split('T')[0],
-        due_date: dueDate,
-        status: 'pending',
-        subtotal, tax, total, notes,
-        public_token: publicToken,
-        currency: currency,
-        is_recurring: isRecurring,
-      };
-
-      if (isRecurring) {
-        invoiceData.recurring_frequency = recurringFrequency;
-        invoiceData.recurring_next_date = recurringNextDate?.toISOString().split('T')[0];
-        invoiceData.recurring_end_date = recurringEndDate || null;
-        invoiceData.recurring_active = true;
-      }
-
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert(invoiceData)
+        .insert({
+          ...invoice,
+          company_id: companyId,
+          subtotal,
+          tax,
+          total,
+          status: 'pending',
+          public_token: publicToken,
+          recurring_active: invoice.is_recurring,
+        })
         .select()
         .single();
 
-      if (invoiceError) throw invoiceError;
+      if (error) throw error;
 
-      const itemsToInsert = items.map(item => ({
-        invoice_id: invoice.id,
-        description: item.description,
-        quantity: item.quantity,
-        price: item.price,
-        amount: item.amount,
-      }));
+      const itemsToInsert = items
+        .filter(item => item.description && item.quantity > 0)
+        .map(item => ({
+          invoice_id: newInvoice.id,
+          description: item.description,
+          quantity: item.quantity,
+          price: item.price,
+          amount: item.quantity * item.price,
+        }));
 
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(itemsToInsert);
-
-      if (itemsError) throw itemsError;
-
-      // Auto-save client
-      const { data: existingClient } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', clientEmail)
-        .single();
-
-      if (!existingClient) {
-        const { data: companies } = await supabase.from('companies').select('id').limit(1);
-        if (companies && companies.length > 0) {
-          await supabase.from('clients').insert({
-            company_id: companies[0].id,
-            name: clientName,
-            email: clientEmail,
-            address: clientAddress || null,
-          });
-        }
+      if (itemsToInsert.length > 0) {
+        await supabase.from('invoice_items').insert(itemsToInsert);
       }
 
-      const { data: companies } = await supabase.from('companies').select('id').limit(1);
-      if (companies && companies.length > 0) {
-        await supabase.from('activity').insert({
-          company_id: companies[0].id,
-          type: 'invoice_created',
-          invoice_id: invoice.id,
-          client_name: clientName,
-          invoice_number: invoiceNumber,
-          amount: total,
-        });
-      }
-
-      alert(`Invoice created!${isRecurring ? ' Will recur ' + recurringFrequency + '.' : ''}`);
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Error creating invoice:', error);
-      alert('Failed to create invoice');
-    } finally {
+      router.push(`/dashboard/invoices/${newInvoice.id}`);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
       setLoading(false);
     }
   };
 
-  const { subtotal, tax, total } = calculateTotals();
-  const currencySymbol = getCurrencySymbol(currency);
-
-  if (!defaultsLoaded) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div><p className="text-gray-600">Loading...</p></div></div>;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-8">
-          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4">← Back to Dashboard</button>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Invoice</h1>
-        </div>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Link href="/dashboard" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </Link>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">📝 Create Invoice</h1>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
-          {/* Client Section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-semibold text-gray-900">Client Information</h2>
-              {savedClients.length > 0 && (
-                <button type="button" onClick={() => setShowClientSelector(!showClientSelector)} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  {showClientSelector ? 'Hide' : 'Select Saved Client'}
-                </button>
-              )}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Number</label>
+              <input type="text" value={invoice.invoice_number} onChange={e => setInvoice({...invoice, invoice_number: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white" />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+              <select value={invoice.currency} onChange={e => setInvoice({...invoice, currency: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white">
+                {Object.entries(CURRENCIES).map(([code, info]: [string, any]) => (
+                  <option key={code} value={code}>{info.symbol} {code}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-            {showClientSelector && savedClients.length > 0 && (
-              <div className="mb-4 bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                <p className="text-sm text-gray-600 mb-3">Click a client to auto-fill:</p>
-                <div className="space-y-2">
-                  {savedClients.map(client => (
-                    <button key={client.id} type="button" onClick={() => selectClient(client)} className="w-full text-left p-3 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">{client.name.charAt(0).toUpperCase()}</div>
-                        <div className="flex-1"><p className="font-medium text-gray-900">{client.name}</p><p className="text-sm text-gray-500">{client.email}</p></div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+          {clients.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Existing Client (optional)</label>
+              <select value={selectedClient} onChange={e => handleClientSelect(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white">
+                <option value="">-- New client --</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input type="text" placeholder="Client Name" value={invoice.client_name} onChange={e => setInvoice({...invoice, client_name: e.target.value})} className="px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white" />
+            <input type="email" placeholder="Client Email" value={invoice.client_email} onChange={e => setInvoice({...invoice, client_email: e.target.value})} className="px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white" />
+          </div>
+          <textarea placeholder="Client Address" value={invoice.client_address} onChange={e => setInvoice({...invoice, client_address: e.target.value})} rows={2} className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Issue Date</label>
+              <input type="date" value={invoice.issue_date} onChange={e => setInvoice({...invoice, issue_date: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+              <input type="date" value={invoice.due_date} onChange={e => setInvoice({...invoice, due_date: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white" />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold text-gray-900">Items</h3>
+              <button onClick={addItem} className="text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 text-sm"><Plus className="w-4 h-4" /> Add Item</button>
+            </div>
+            {items.map((item, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
+                <input type="text" placeholder="Description" value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} className="col-span-6 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm" />
+                <input type="number" placeholder="Qty" value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseFloat(e.target.value) || 0)} className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm" />
+                <input type="number" step="0.01" placeholder="Price" value={item.price} onChange={e => updateItem(idx, 'price', parseFloat(e.target.value) || 0)} className="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm" />
+                <button onClick={() => removeItem(idx)} className="col-span-1 text-red-600 hover:text-red-700 flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
               </div>
+            ))}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tax Rate (%)</label>
+            <input type="number" step="0.01" value={invoice.tax_rate} onChange={e => setInvoice({...invoice, tax_rate: parseFloat(e.target.value) || 0})} className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white" />
+          </div>
+
+          <textarea placeholder="Notes" value={invoice.notes} onChange={e => setInvoice({...invoice, notes: e.target.value})} rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white" />
+
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="recurring" checked={invoice.is_recurring} onChange={e => setInvoice({...invoice, is_recurring: e.target.checked})} className="w-4 h-4" />
+            <label htmlFor="recurring" className="text-sm font-medium text-gray-700">Recurring Invoice</label>
+            {invoice.is_recurring && (
+              <select value={invoice.recurring_frequency} onChange={e => setInvoice({...invoice, recurring_frequency: e.target.value})} className="ml-3 px-3 py-1 border border-gray-300 rounded text-gray-900 bg-white text-sm">
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+              </select>
             )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">Client Name *</label><input type="text" required value={clientName} onChange={(e) => setClientName(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="Acme Corp" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">Client Email *</label><input type="email" required value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="contact@acme.com" /></div>
-              <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Client Address *</label><input type="text" required value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="456 Client Ave" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">Due Date *</label><input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">Currency 🌍</label><select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white">{CURRENCIES.map((curr) => (<option key={curr.code} value={curr.code}>{curr.flag} {curr.code} ({curr.symbol})</option>))}</select></div>
-            </div>
           </div>
 
-          {/* RECURRING INVOICE SECTION - NEW! */}
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isRecurring}
-                  onChange={(e) => setIsRecurring(e.target.checked)}
-                  className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <Repeat className="w-5 h-5 text-blue-600" />
-                    <span className="text-lg font-semibold text-gray-900">Make this a Recurring Invoice</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">Auto-generate this invoice on a schedule (weekly, monthly, etc.)</p>
-                </div>
-              </label>
-
-              {isRecurring && (
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 pl-8">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
-                    <select
-                      value={recurringFrequency}
-                      onChange={(e) => setRecurringFrequency(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                    >
-                      <option value="weekly">📅 Weekly</option>
-                      <option value="monthly">📅 Monthly</option>
-                      <option value="quarterly">📅 Quarterly (every 3 months)</option>
-                      <option value="yearly">📅 Yearly</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date (Optional)</label>
-                    <input
-                      type="date"
-                      value={recurringEndDate}
-                      onChange={(e) => setRecurringEndDate(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Leave empty for indefinite</p>
-                  </div>
-
-                  <div className="md:col-span-2 bg-white rounded-lg p-4 flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                    <div className="text-sm text-gray-700">
-                      <strong>Next invoice will be auto-created on:</strong>{' '}
-                      {dueDate && (() => {
-                        const next = calculateNextDate(recurringFrequency, new Date(dueDate));
-                        return next.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{formatCurrency(subtotal, invoice.currency)}</span></div>
+            <div className="flex justify-between text-gray-600"><span>Tax:</span><span>{formatCurrency(tax, invoice.currency)}</span></div>
+            <div className="flex justify-between text-lg font-bold text-gray-900 border-t border-gray-200 pt-2"><span>Total:</span><span>{formatCurrency(total, invoice.currency)}</span></div>
           </div>
 
-          {/* Line Items */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Line Items</h2>
-              <button type="button" onClick={addItem} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">+ Add Item</button>
-            </div>
-            <div className="space-y-4">
-              {items.map((item) => (
-                <div key={item.id} className="grid grid-cols-12 gap-4 items-end">
-                  <div className="col-span-12 md:col-span-5"><label className="block text-sm font-medium text-gray-700 mb-2">Description</label><input type="text" required value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="Service or product description" /></div>
-                  <div className="col-span-4 md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Qty</label><input type="number" required min="1" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" /></div>
-                  <div className="col-span-4 md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Price ({currencySymbol})</label><input type="number" required min="0" step="0.01" value={item.price} onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" /></div>
-                  <div className="col-span-3 md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Amount</label><div className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium">{formatCurrency(item.amount, currency)}</div></div>
-                  <div className="col-span-1">{items.length > 1 && (<button type="button" onClick={() => removeItem(item.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg text-xl font-bold" title="Remove item">×</button>)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-8 flex justify-end">
-            <div className="w-full md:w-80 space-y-2">
-              <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span className="font-semibold text-gray-900">{formatCurrency(subtotal, currency)}</span></div>
-              <div className="flex justify-between text-gray-600"><span>Tax ({(taxRate * 100).toFixed(3)}%):</span><span className="font-semibold text-gray-900">{formatCurrency(tax, currency)}</span></div>
-              <div className="border-t pt-2 flex justify-between text-lg font-bold text-gray-900"><span>Total:</span><span>{formatCurrency(total, currency)}</span></div>
-            </div>
-          </div>
-
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white" placeholder="Payment via USDC • 0% fees • 10-second settlement" />
-          </div>
-
-          <div className="flex gap-4">
-            <button type="button" onClick={() => router.push('/dashboard')} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg">Cancel</button>
-            <button type="submit" disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Creating...' : 'Create Invoice'}</button>
-          </div>
-        </form>
+          <button onClick={handleSubmit} disabled={loading || !invoice.client_name} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50">
+            <Save className="w-5 h-5" /> {loading ? 'Creating...' : 'Create Invoice'}
+          </button>
+        </div>
       </div>
     </div>
-  );
-}
-
-export default function CreateInvoicePage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <CreateInvoiceContent />
-    </Suspense>
   );
 }

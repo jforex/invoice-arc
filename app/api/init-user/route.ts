@@ -1,26 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase-server';
 import { createUser, createUserToken } from '@/lib/circle';
+import { getCurrentCompany } from '@/lib/auth-helpers';
 import { v4 as uuidv4 } from 'uuid';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
-    const { data: companies } = await supabase
-      .from('companies')
-      .select('*')
-      .limit(1);
+    const { user, company, error } = await getCurrentCompany();
 
-    if (!companies || companies.length === 0) {
-      return NextResponse.json({ error: 'No company found' }, { status: 404 });
+    if (error || !company) {
+      return NextResponse.json({ error: error || 'Not authenticated' }, { status: 401 });
     }
 
-    const company = companies[0];
-
+    const supabase = await createClient();
     let circleUserId = company.circle_user_id;
 
     if (!circleUserId) {

@@ -1,138 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase-server';
 import { Resend } from 'resend';
-import { supabase } from '@/lib/supabase';
-import { InvoiceEmailTemplate } from '@/lib/InvoiceEmailTemplate';
-import { pdf } from '@react-pdf/renderer';
-import InvoicePDF from '@/components/InvoicePDF';
-import { formatCurrency } from '@/lib/currency';
-import React from 'react';
+import { getCurrentCompany } from '@/lib/auth-helpers';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
-    const { invoiceId } = await request.json();
-
-    if (!invoiceId) {
-      return NextResponse.json(
-        { error: 'Invoice ID is required' },
-        { status: 400 }
-      );
+    const { company, error: authError } = await getCurrentCompany();
+    if (authError || !company) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { data: invoice, error: invoiceError } = await supabase
+    const { invoiceId } = await request.json();
+    if (!invoiceId) return NextResponse.json({ error: 'Invoice ID required' }, { status: 400 });
+
+    const supabase = await createClient();
+    const { data: invoice } = await supabase
       .from('invoices')
       .select('*')
       .eq('id', invoiceId)
+      .eq('company_id', company.id)
       .single();
 
-    if (invoiceError || !invoice) {
-      return NextResponse.json(
-        { error: 'Invoice not found' },
-        { status: 404 }
-      );
-    }
+    if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
-    const { data: items, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', invoiceId);
+    const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invoice/${invoice.public_token}`;
 
-    if (itemsError) {
-      return NextResponse.json(
-        { error: 'Failed to fetch invoice items' },
-        { status: 500 }
-      );
-    }
-
-    const { data: company } = await supabase
-      .from('companies')
-      .select('*')
-      .limit(1)
-      .single();
-
-    const pdfElement = React.createElement(InvoicePDF as any, { 
-      invoice: { ...invoice, items: items || [] },
-      company: company || undefined,
-    }) as any;
-    
-    const pdfBlob = await pdf(pdfElement).toBlob();
-    const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
-
-    const formatDate = (dateString: string) => {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    };
-
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const invoiceUrl = invoice.public_token 
-      ? `${baseUrl}/invoice/${invoice.public_token}`
-      : `${baseUrl}/dashboard/invoices/${invoiceId}`;
-
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    const companyName = company?.name || 'Christian Design Studio';
-    const currency = invoice.currency || 'USD';
-
-    const { data, error } = await resend.emails.send({
-      from: `${companyName} <onboarding@resend.dev>`,
-      to: [invoice.client_email],
-      subject: `Invoice ${invoice.invoice_number} from ${companyName}`,
-      html: InvoiceEmailTemplate({
-        invoiceNumber: invoice.invoice_number,
-        clientName: invoice.client_name,
-        total: formatCurrency(invoice.total, currency),
-        dueDate: formatDate(invoice.due_date),
-        invoiceUrl: invoiceUrl,
-        companyName: company?.name,
-        companyEmail: company?.email,
-        companyAddress: company?.address,
-        companyPhone: company?.phone,
-        companyWebsite: company?.website,
-        brandColor: company?.brand_color,
-        logoUrl: company?.logo_url,
-        emailSignature: company?.email_signature,
-      }),
-      attachments: [
-        {
-          filename: `${invoice.invoice_number}.pdf`,
-          content: pdfBuffer,
-        },
-      ],
+    await resend.emails.send({
+      from: 'invoices@yourdomain.com',
+      to: invoice.client_email,
+      subject: `Invoice ${invoice.invoice_number} from ${company.name}`,
+      html: `
+        <h2>Invoice ${invoice.invoice_number}</h2>
+        <p>Hi ${invoice.client_name},</p>
+        <p>You have a new invoice from ${company.name}.</p>
+        <p>Amount: ${invoice.currency} ${invoice.total}</p>
+        <p><a href="${publicUrl}">View & Pay Invoice</a></p>
+      `,
     });
 
-    if (error) {
-      console.error('Resend error:', error);
-      return NextResponse.json(
-        { error: 'Failed to send email', details: error },
-        { status: 500 }
-      );
-    }
-
-    const { data: companies } = await supabase.from('companies').select('id').limit(1);
-    if (companies && companies.length > 0) {
-      await supabase.from('activity').insert({
-        company_id: companies[0].id,
-        type: 'email_sent',
-        invoice_id: invoiceId,
-        client_name: invoice.client_name,
-        invoice_number: invoice.invoice_number,
-        amount: invoice.total,
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      messageId: data?.id,
-      message: 'Invoice email sent successfully',
-    });
-
-  } catch (error) {
-    console.error('Error sending invoice email:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
