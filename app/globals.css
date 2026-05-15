@@ -1,26 +1,186 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Brand palette — warm editorial fintech */
+  --color-cream: #f5efe6;
+  --color-cream-soft: #faf5ec;
+  --color-cream-deep: #ede4d3;
+
+  --color-coffee: #3d2817;
+  --color-coffee-soft: #4d3422;
+  --color-coffee-deep: #2a1c10;
+
+  --color-tan: #e8d5b7;
+  --color-tan-soft: #f0e0c4;
+  --color-tan-deep: #d4bc94;
+
+  --color-accent: #c89968;
+
+  --color-sage: #c8d5b9;
+  --color-sage-deep: #6b8e5f;
+  --color-amber: #e8c068;
+  --color-amber-deep: #b8862f;
+
+  /* Typography */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+
+  /* Radius */
+  --radius-card: 1.5rem;
+  --radius-card-lg: 2rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+}
+
+/* Custom selection */
+::selection {
+  background: var(--color-coffee);
+  color: var(--color-cream);
+}
+
+/* Fade-in on scroll */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Progress bar fill animation */
+@keyframes fillBar {
+  from {
+    width: 0;
+  }
+}
+
+.fill-bar {
+  animation: fillBar 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Subtle grain texture for warmth */
+.grain {
+  position: relative;
+}
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+/* Micro-interaction animations */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 213, 183, 0); }
+  50% { box-shadow: 0 0 24px 4px rgba(232, 213, 183, 0.35); }
+}
+
+/* Group-hover utility classes */
+.group:hover .group-hover\:wiggle {
+  animation: wiggle 0.5s ease-in-out;
+}
+
+.group:hover .group-hover\:bounce-subtle {
+  animation: bounce-subtle 0.6s ease-in-out;
+}
+
+.group:hover .group-hover\:spin-slow {
+  animation: spin-slow 1s linear;
+}
+
+.group:hover .group-hover\:glow {
+  animation: glow 1.2s ease-in-out;
+}
+
+/* Falling logos in hero */
+@keyframes fall-drift {
+  0% {
+    transform: translate(0, -30vh) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--fall-opacity, 0.06);
+  }
+  85% {
+    opacity: var(--fall-opacity, 0.06);
+  }
+  100% {
+    transform: translate(var(--fall-drift, 40px), 120vh) rotate(var(--fall-rotate, 20deg));
+    opacity: 0;
+  }
+}
+.fall-drop {
+  position: absolute;
+  top: 0;
+  animation: fall-drift linear infinite;
+  pointer-events: none;
+  will-change: transform, opacity;
 }

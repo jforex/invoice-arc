@@ -2,11 +2,25 @@
 
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { pdf } from '@react-pdf/renderer';
 import InvoicePDF from '@/components/InvoicePDF';
 import { formatCurrency } from '@/lib/currency';
 import React from 'react';
+import {
+  ArrowLeft,
+  Link as LinkIcon,
+  Download,
+  Mail,
+  CheckCircle2,
+  Building2,
+  Calendar,
+  Check,
+  Copy,
+  Zap,
+  Clock,
+} from 'lucide-react';
 
 interface InvoiceData {
   id: string;
@@ -44,9 +58,13 @@ interface CompanyData {
   brand_color: string;
 }
 
-export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function InvoiceDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
-  
+
   const router = useRouter();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [company, setCompany] = useState<CompanyData | null>(null);
@@ -55,10 +73,19 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [sending, setSending] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchData();
   }, [id]);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchData = async () => {
     try {
@@ -69,8 +96,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         .single();
 
       if (invoiceError || !invoiceData) {
-        alert('Invoice not found');
-        router.push('/dashboard');
+        showToast('error', 'Invoice not found');
+        setTimeout(() => router.push('/dashboard'), 1500);
         return;
       }
 
@@ -98,9 +125,9 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     if (!invoice) return;
     setDownloading(true);
     try {
-      const pdfElement = React.createElement(InvoicePDF as any, { 
-        invoice, 
-        company: company || undefined 
+      const pdfElement = React.createElement(InvoicePDF as any, {
+        invoice,
+        company: company || undefined,
       }) as any;
       const blob = await pdf(pdfElement).toBlob();
       const url = URL.createObjectURL(blob);
@@ -111,7 +138,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF');
+      showToast('error', 'Failed to generate PDF');
     } finally {
       setDownloading(false);
     }
@@ -119,7 +146,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const handleSendEmail = async () => {
     if (!invoice) return;
-    
+
     if (!confirm(`Send invoice to ${invoice.client_email}?`)) {
       return;
     }
@@ -138,10 +165,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         throw new Error(data.error || 'Failed to send email');
       }
 
-      alert(`Invoice sent successfully to ${invoice.client_email}!`);
+      showToast('success', `Invoice sent to ${invoice.client_email}`);
     } catch (error) {
       console.error('Error sending email:', error);
-      alert('Failed to send email');
+      showToast('error', 'Failed to send email');
     } finally {
       setSending(false);
     }
@@ -160,7 +187,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
       if (error) throw error;
 
-      const { data: companies } = await supabase.from('companies').select('id').limit(1);
+      const { data: companies } = await supabase
+        .from('companies')
+        .select('id')
+        .limit(1);
       if (companies && companies.length > 0) {
         await supabase.from('activity').insert({
           company_id: companies[0].id,
@@ -173,10 +203,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       }
 
       setInvoice({ ...invoice, status: 'paid' });
-      alert('Invoice marked as paid!');
+      showToast('success', 'Invoice marked as paid');
     } catch (error) {
       console.error('Error updating invoice:', error);
-      alert('Failed to update invoice');
+      showToast('error', 'Failed to update invoice');
     } finally {
       setUpdating(false);
     }
@@ -184,10 +214,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const handleCopyShareLink = () => {
     if (!invoice?.public_token) {
-      alert('No public link available for this invoice');
+      showToast('error', 'No public link available');
       return;
     }
-    
+
     const url = `${window.location.origin}/invoice/${invoice.public_token}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
@@ -204,10 +234,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading invoice...</p>
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-coffee/60">
+          <div className="w-2 h-2 bg-coffee rounded-full animate-pulse-dot" />
+          <span className="text-sm">Loading invoice…</span>
         </div>
       </div>
     );
@@ -215,165 +245,349 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   if (!invoice) return null;
 
-  const brandColor = company?.brand_color || '#2563eb';
   const currency = invoice.currency || 'USD';
+  const isPaid = invoice.status === 'paid';
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="max-w-5xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
+      {/* Top bar */}
+      <div className="mb-8">
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="inline-flex items-center gap-1.5 text-sm text-coffee/60 hover:text-coffee transition-colors mb-6"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Dashboard
+        </button>
+
+        <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-2"
-            >
-              ← Back to Dashboard
-            </button>
-            <h1 className="text-3xl font-bold text-gray-900">{invoice.invoice_number}</h1>
-            <p className="text-gray-600">Issued {formatDate(invoice.issue_date)}</p>
+            <div className="flex items-center gap-3 flex-wrap mb-2">
+              <h1 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight text-coffee">
+                {invoice.invoice_number}
+              </h1>
+              <span
+                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${
+                  isPaid
+                    ? 'bg-sage/40 text-sage-deep border border-sage-deep/20'
+                    : 'bg-amber/30 text-amber-deep border border-amber-deep/20'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isPaid
+                      ? 'bg-sage-deep animate-pulse-dot'
+                      : 'bg-amber-deep animate-pulse-dot'
+                  }`}
+                />
+                {isPaid ? 'Paid' : 'Pending'}
+              </span>
+            </div>
+            <p className="text-coffee/60">
+              Issued {formatDate(invoice.issue_date)}
+            </p>
           </div>
 
+          {/* Actions */}
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleCopyShareLink}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+              className="inline-flex items-center gap-2 bg-cream-soft border border-coffee/10 text-coffee px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-tan-soft transition-colors"
             >
-              {copied ? '✓ Copied!' : '🔗 Copy Share Link'}
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-sage-deep" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  Share Link
+                </>
+              )}
             </button>
 
             <button
               onClick={handleDownloadPDF}
               disabled={downloading}
-              className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-2 bg-cream-soft border border-coffee/10 text-coffee px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-tan-soft transition-colors disabled:opacity-50"
             >
-              {downloading ? 'Generating...' : '📄 Download PDF'}
+              {downloading ? (
+                <>
+                  <span className="w-1.5 h-1.5 bg-coffee rounded-full animate-pulse-dot" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  Download PDF
+                </>
+              )}
             </button>
 
             <button
               onClick={handleSendEmail}
               disabled={sending}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-2 bg-coffee text-cream px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-coffee-deep transition-all hover:shadow-md hover:shadow-coffee/20 disabled:opacity-50"
             >
-              {sending ? 'Sending...' : '✉️ Send Email'}
+              {sending ? (
+                <>
+                  <span className="w-1.5 h-1.5 bg-cream rounded-full animate-pulse-dot" />
+                  Sending…
+                </>
+              ) : (
+                <>
+                  <Mail className="w-3.5 h-3.5" />
+                  Send Email
+                </>
+              )}
             </button>
 
-            {invoice.status !== 'paid' && (
+            {!isPaid && (
               <button
                 onClick={handleMarkAsPaid}
                 disabled={updating}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
+                className="inline-flex items-center gap-2 bg-sage-deep text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50"
               >
-                {updating ? 'Updating...' : '✓ Mark as Paid'}
+                {updating ? (
+                  <>
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse-dot" />
+                    Updating…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Mark as Paid
+                  </>
+                )}
               </button>
             )}
           </div>
         </div>
+      </div>
 
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <div className="flex flex-col md:flex-row md:justify-between mb-8 gap-4">
+      {/* ───────────────── Invoice document ───────────────── */}
+      <div className="bg-cream-soft border border-coffee/5 rounded-3xl overflow-hidden">
+        {/* Hero strip */}
+        <div className="bg-coffee text-cream px-8 lg:px-12 py-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-tan/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative grid sm:grid-cols-2 gap-6">
             <div>
-              <p className="text-sm text-gray-500 mb-1">📅 Due Date</p>
-              <p className="text-lg font-semibold text-gray-900">{formatDate(invoice.due_date)}</p>
+              <p className="text-cream/50 text-xs uppercase tracking-wider mb-2">
+                Total Due
+              </p>
+              <p className="font-display text-4xl lg:text-5xl font-semibold">
+                {formatCurrency(invoice.total, currency)}
+              </p>
             </div>
-            <div className={`inline-flex items-center self-start md:self-auto px-4 py-2 rounded-full text-sm font-semibold ${
-              invoice.status === 'paid' 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {invoice.status === 'paid' ? '✓ Paid' : '⏱ Pending'}
+            <div className="sm:text-right">
+              <p className="text-cream/50 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5 sm:justify-end">
+                <Calendar className="w-3 h-3" />
+                Due Date
+              </p>
+              <p className="font-display text-2xl font-semibold">
+                {formatDate(invoice.due_date)}
+              </p>
             </div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        {/* Body */}
+        <div className="p-8 lg:p-12">
+          {/* From / Bill To */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">FROM</h3>
+              <h3 className="text-xs font-medium text-coffee/50 uppercase tracking-wider mb-4">
+                From
+              </h3>
               <div className="flex items-start gap-3">
                 {company?.logo_url ? (
-                  <img 
-                    src={company.logo_url} 
-                    alt="Company logo" 
-                    className="w-12 h-12 object-contain rounded-lg bg-white border border-gray-200 p-1"
-                  />
+                  <div className="w-12 h-12 rounded-xl bg-cream border border-coffee/10 p-1.5 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <Image
+                      src={company.logo_url}
+                      alt="Company logo"
+                      width={48}
+                      height={48}
+                      className="object-contain max-h-full max-w-full"
+                      unoptimized
+                    />
+                  </div>
                 ) : (
-                  <div 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xl"
-                    style={{ backgroundColor: brandColor }}
-                  >
-                    🏢
+                  <div className="w-12 h-12 rounded-xl bg-coffee text-cream flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5" strokeWidth={1.5} />
                   </div>
                 )}
-                <div>
-                  <p className="font-semibold text-gray-900">{company?.name || 'Christian Design Studio'}</p>
-                  <p className="text-gray-600 text-sm">{company?.email || 'hello@christiandesign.com'}</p>
-                  <p className="text-gray-600 text-sm">{company?.address || 'Port Harcourt, Rivers State, Nigeria'}</p>
-                  {company?.phone && <p className="text-gray-600 text-sm">{company.phone}</p>}
-                  {company?.website && <p className="text-gray-600 text-sm">{company.website}</p>}
+                <div className="min-w-0">
+                  <p className="font-display font-semibold text-coffee">
+                    {company?.name || 'Christian Design Studio'}
+                  </p>
+                  <p className="text-coffee/60 text-sm">
+                    {company?.email || 'hello@christiandesign.com'}
+                  </p>
+                  <p className="text-coffee/60 text-sm">
+                    {company?.address || 'Port Harcourt, Rivers State, Nigeria'}
+                  </p>
+                  {company?.phone && (
+                    <p className="text-coffee/60 text-sm">{company.phone}</p>
+                  )}
+                  {company?.website && (
+                    <p className="text-coffee/60 text-sm">{company.website}</p>
+                  )}
                 </div>
               </div>
             </div>
+
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">BILL TO</h3>
-              <div>
-                <p className="font-semibold text-gray-900">{invoice.client_name}</p>
-                <p className="text-gray-600 text-sm">{invoice.client_email}</p>
-                <p className="text-gray-600 text-sm">{invoice.client_address}</p>
+              <h3 className="text-xs font-medium text-coffee/50 uppercase tracking-wider mb-4">
+                Bill To
+              </h3>
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-tan-soft rounded-xl flex items-center justify-center font-display font-semibold text-coffee flex-shrink-0">
+                  {invoice.client_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-display font-semibold text-coffee">
+                    {invoice.client_name}
+                  </p>
+                  <p className="text-coffee/60 text-sm">
+                    {invoice.client_email}
+                  </p>
+                  {invoice.client_address && (
+                    <p className="text-coffee/60 text-sm whitespace-pre-line">
+                      {invoice.client_address}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
+          {/* Items table */}
           <div className="mb-8">
-            <table className="w-full">
-              <thead className="border-b-2" style={{ borderColor: brandColor }}>
-                <tr>
-                  <th className="text-left py-3 text-xs font-semibold text-gray-600 uppercase">Description</th>
-                  <th className="text-center py-3 text-xs font-semibold text-gray-600 uppercase">Qty</th>
-                  <th className="text-right py-3 text-xs font-semibold text-gray-600 uppercase">Price</th>
-                  <th className="text-right py-3 text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice.items.map((item) => (
-                  <tr key={item.id} className="border-b border-gray-100">
-                    <td className="py-4 text-gray-900">{item.description}</td>
-                    <td className="py-4 text-gray-900 text-center">{item.quantity}</td>
-                    <td className="py-4 text-gray-900 text-right">{formatCurrency(item.price, currency)}</td>
-                    <td className="py-4 text-gray-900 text-right font-semibold">{formatCurrency(item.amount, currency)}</td>
+            <div className="overflow-x-auto -mx-4 lg:mx-0">
+              <table className="w-full min-w-[500px]">
+                <thead>
+                  <tr className="border-b border-coffee/10">
+                    <th className="text-left py-3 px-4 lg:px-0 text-xs font-medium text-coffee/50 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="text-center py-3 px-4 text-xs font-medium text-coffee/50 uppercase tracking-wider">
+                      Qty
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-medium text-coffee/50 uppercase tracking-wider">
+                      Price
+                    </th>
+                    <th className="text-right py-3 px-4 lg:px-0 text-xs font-medium text-coffee/50 uppercase tracking-wider">
+                      Amount
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {invoice.items.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b border-coffee/5 last:border-b-0"
+                    >
+                      <td className="py-4 px-4 lg:px-0 text-coffee">
+                        {item.description}
+                      </td>
+                      <td className="py-4 px-4 text-coffee/70 text-center">
+                        {item.quantity}
+                      </td>
+                      <td className="py-4 px-4 text-coffee/70 text-right">
+                        {formatCurrency(item.price, currency)}
+                      </td>
+                      <td className="py-4 px-4 lg:px-0 text-right">
+                        <span className="font-display font-semibold text-coffee">
+                          {formatCurrency(item.amount, currency)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="flex justify-end mb-6">
-            <div className="w-full md:w-80 space-y-2">
-              <div className="flex justify-between text-gray-600">
-                <span>Subtotal</span>
-                <span className="font-semibold">{formatCurrency(invoice.subtotal, currency)}</span>
+          {/* Totals */}
+          <div className="flex justify-end mb-8">
+            <div className="w-full md:w-80 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-coffee/60">Subtotal</span>
+                <span className="font-medium text-coffee">
+                  {formatCurrency(invoice.subtotal, currency)}
+                </span>
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Tax</span>
-                <span className="font-semibold">{formatCurrency(invoice.tax, currency)}</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-coffee/60">Tax</span>
+                <span className="font-medium text-coffee">
+                  {formatCurrency(invoice.tax, currency)}
+                </span>
               </div>
-              <div className="border-t pt-2 flex justify-between text-xl font-bold" style={{ color: brandColor }}>
-                <span>Total</span>
-                <span>{formatCurrency(invoice.total, currency)}</span>
+              <div className="border-t border-coffee/10 pt-3 flex justify-between items-baseline">
+                <span className="text-coffee/70 font-medium">Total</span>
+                <span className="font-display text-2xl font-semibold text-coffee">
+                  {formatCurrency(invoice.total, currency)}
+                </span>
               </div>
             </div>
           </div>
 
+          {/* Notes */}
           {invoice.notes && (
-            <div className="bg-gray-50 rounded-lg p-6 mb-6">
-              <p className="text-gray-700">{invoice.notes}</p>
+            <div className="bg-cream rounded-2xl border border-coffee/5 p-5 mb-6">
+              <p className="text-xs font-medium text-coffee/50 uppercase tracking-wider mb-2">
+                Notes
+              </p>
+              <p className="text-coffee/80 leading-relaxed whitespace-pre-line">
+                {invoice.notes}
+              </p>
             </div>
           )}
 
-          <div className="border-t pt-6">
-            <p className="text-sm text-gray-500 flex items-center gap-2">
-              💲 Payment via USDC • 0% fees • 10-second settlement
+          {/* Payment note */}
+          <div className="flex items-center gap-3 pt-6 border-t border-coffee/10">
+            <div className="w-9 h-9 bg-tan-soft rounded-xl flex items-center justify-center flex-shrink-0">
+              <Zap
+                className="w-3.5 h-3.5 text-coffee fill-coffee"
+                strokeWidth={1.5}
+              />
+            </div>
+            <p className="text-sm text-coffee/70">
+              Payment via{' '}
+              <span className="font-medium text-coffee">USDC</span> · 0% fees ·
+              <span className="inline-flex items-center gap-1 ml-1">
+                <Clock className="w-3 h-3" />
+                10-second settlement
+              </span>
             </p>
           </div>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-up">
+          <div
+            className={`px-5 py-3 rounded-full shadow-2xl flex items-center gap-2.5 text-sm font-medium ${
+              toast.type === 'success'
+                ? 'bg-coffee text-cream shadow-coffee/30'
+                : 'bg-red-600 text-white shadow-red-600/30'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <div className="w-5 h-5 bg-sage rounded-full flex items-center justify-center">
+                <Check className="w-3 h-3 text-coffee" strokeWidth={3} />
+              </div>
+            ) : (
+              <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+                <span className="text-xs">!</span>
+              </div>
+            )}
+            {toast.message}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

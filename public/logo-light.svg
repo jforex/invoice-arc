@@ -1,0 +1,32 @@
+<svg width="44" height="52" viewBox="0 0 44 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Back layer: the scroll body shadow -->
+  <rect x="8" y="10" width="28" height="34" rx="1" fill="#EDE4D3"/>
+  
+  <!-- Main parchment surface -->
+  <rect x="7" y="9" width="28" height="34" rx="1" fill="#F5EFE6"/>
+  
+  <!-- Top curl: rolled cylinder -->
+  <g>
+    <ellipse cx="21" cy="9" rx="15" ry="4.5" fill="#FAF5EC"/>
+    <ellipse cx="21" cy="9" rx="15" ry="4.5" fill="none" stroke="#D4BC94" stroke-width="0.6"/>
+    <ellipse cx="21" cy="7.5" rx="12" ry="1.8" fill="#FFFFFF" opacity="0.6"/>
+    <!-- end caps -->
+    <ellipse cx="36" cy="9" rx="2" ry="4.5" fill="#E8D5B7" opacity="0.6"/>
+    <ellipse cx="6" cy="9" rx="2" ry="4.5" fill="#E8D5B7" opacity="0.6"/>
+  </g>
+  
+  <!-- Writing lines on parchment (coffee on cream) -->
+  <line x1="12" y1="19" x2="30" y2="19" stroke="#3D2817" stroke-width="1.7" stroke-linecap="round" stroke-opacity="0.85"/>
+  <line x1="12" y1="25" x2="26" y2="25" stroke="#3D2817" stroke-width="1.7" stroke-linecap="round" stroke-opacity="0.7"/>
+  <line x1="12" y1="31" x2="30" y2="31" stroke="#3D2817" stroke-width="1.7" stroke-linecap="round" stroke-opacity="0.85"/>
+  <line x1="12" y1="37" x2="23" y2="37" stroke="#3D2817" stroke-width="1.7" stroke-linecap="round" stroke-opacity="0.6"/>
+  
+  <!-- Bottom curl: rolled cylinder -->
+  <g>
+    <ellipse cx="21" cy="43" rx="15" ry="4.5" fill="#EDE4D3"/>
+    <ellipse cx="21" cy="43" rx="15" ry="4.5" fill="none" stroke="#D4BC94" stroke-width="0.6"/>
+    <ellipse cx="21" cy="41.5" rx="12" ry="1.5" fill="#FAF5EC" opacity="0.6"/>
+    <ellipse cx="36" cy="43" rx="2" ry="4.5" fill="#D4BC94" opacity="0.6"/>
+    <ellipse cx="6" cy="43" rx="2" ry="4.5" fill="#D4BC94" opacity="0.6"/>
+  </g>
+</svg>

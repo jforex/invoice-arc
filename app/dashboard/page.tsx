@@ -2,21 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
 import { formatCurrency } from '@/lib/currency';
-import { 
-  DollarSign, FileText, Clock, CheckCircle, TrendingUp, Plus, Eye, Settings, 
-  BarChart3, Users, Repeat, Bell, LogOut, Wallet
+import {
+  DollarSign,
+  FileText,
+  Clock,
+  CheckCircle,
+  Plus,
+  Eye,
+  Bell,
+  ArrowUpRight,
+  TrendingUp,
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const router = useRouter();
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [stats, setStats] = useState({ totalRevenue: 0, invoicesSent: 0, pendingAmount: 0, paidThisMonth: 0 });
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    invoicesSent: 0,
+    pendingAmount: 0,
+    paidThisMonth: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
-  const [recurringCount, setRecurringCount] = useState(0);
   const [overdueCount, setOverdueCount] = useState(0);
   const [userEmail, setUserEmail] = useState('');
 
@@ -26,8 +35,10 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     const supabase = createClient();
-    
-    const { data: { user } } = await supabase.auth.getUser();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) setUserEmail(user.email || '');
 
     const { data: company } = await supabase
@@ -52,39 +63,31 @@ export default function Dashboard() {
     if (invoicesData) {
       setInvoices(invoicesData);
       const totalRevenue = invoicesData.reduce((sum, inv) => sum + inv.total, 0);
-      const pendingAmount = invoicesData.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.total, 0);
-      const paidThisMonth = invoicesData.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total, 0);
-      const recurring = invoicesData.filter(inv => inv.is_recurring && inv.recurring_active).length;
-      
+      const pendingAmount = invoicesData
+        .filter((inv) => inv.status === 'pending')
+        .reduce((sum, inv) => sum + inv.total, 0);
+      const paidThisMonth = invoicesData
+        .filter((inv) => inv.status === 'paid')
+        .reduce((sum, inv) => sum + inv.total, 0);
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const overdue = invoicesData.filter(inv => {
+      const overdue = invoicesData.filter((inv) => {
         if (inv.status === 'paid') return false;
         const dueDate = new Date(inv.due_date);
         dueDate.setHours(0, 0, 0, 0);
         return dueDate < today;
       }).length;
-      
-      setRecurringCount(recurring);
+
       setOverdueCount(overdue);
-      setStats({ totalRevenue, invoicesSent: invoicesData.length, pendingAmount, paidThisMonth });
+      setStats({
+        totalRevenue,
+        invoicesSent: invoicesData.length,
+        pendingAmount,
+        paidThisMonth,
+      });
     }
     setLoading(false);
-  };
-
-  const handleSignOut = async () => {
-    await fetch('/api/auth/signout', { method: 'POST' });
-    router.push('/login');
-    router.refresh();
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'overdue': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
   };
 
   const isOverdue = (invoice: any) => {
@@ -96,158 +99,262 @@ export default function Dashboard() {
     return due < today;
   };
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const statusBadge = (invoice: any) => {
+    if (isOverdue(invoice)) {
+      return 'bg-red-100 text-red-700 border border-red-200';
+    }
+    switch (invoice.status) {
+      case 'paid':
+        return 'bg-sage/40 text-sage-deep border border-sage-deep/20';
+      case 'pending':
+        return 'bg-amber/30 text-amber-deep border border-amber-deep/20';
+      default:
+        return 'bg-coffee/10 text-coffee/70 border border-coffee/15';
+    }
+  };
+
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
 
   if (loading) {
-    return <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center"><div className="text-lg text-gray-600">Loading...</div></div>;
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-coffee/60">
+          <div className="w-2 h-2 bg-coffee rounded-full animate-pulse-dot" />
+          <span className="text-sm">Loading your workspace…</span>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Inv</h1>
-              <p className="text-gray-600 mt-1">{userEmail}</p>
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <Link href="/dashboard/invoices/create" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center gap-2">
-                <Plus className="w-5 h-5" />Create Invoice
-              </Link>
-              <Link href="/wallet" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50" title="Wallet">
-                <Wallet className="w-5 h-5" />
-              </Link>
-              <Link href="/reminders" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 relative" title="Reminders">
-                <Bell className="w-5 h-5" />
-                {overdueCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {overdueCount}
-                  </span>
-                )}
-              </Link>
-              <Link href="/recurring" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 relative" title="Recurring">
-                <Repeat className="w-5 h-5" />
-                {recurringCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {recurringCount}
-                  </span>
-                )}
-              </Link>
-              <Link href="/clients" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50" title="Clients">
-                <Users className="w-5 h-5" />
-              </Link>
-              <Link href="/analytics" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50" title="Analytics">
-                <BarChart3 className="w-5 h-5" />
-              </Link>
-              <Link href="/settings" className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50" title="Settings">
-                <Settings className="w-5 h-5" />
-              </Link>
-              <button onClick={handleSignOut} className="p-3 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-600" title="Sign Out">
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+    <div className="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-4 mb-10">
+        <div>
+          <p className="text-coffee/60 text-sm mb-1.5">
+            {new Date().toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </p>
+          <h1 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight text-coffee">
+            Welcome back
+          </h1>
         </div>
+        <Link
+          href="/dashboard/invoices/create"
+          className="group hidden sm:inline-flex items-center gap-2 bg-coffee text-cream px-5 py-3 rounded-full font-medium hover:bg-coffee-deep transition-all hover:shadow-lg hover:shadow-coffee/20"
+        >
+          <Plus className="w-4 h-4" />
+          New Invoice
+        </Link>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {overdueCount > 0 && (
-          <Link href="/reminders" className="block mb-6">
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 hover:bg-red-100">
+      {/* Overdue alert */}
+      {overdueCount > 0 && (
+        <Link href="/dashboard/reminders" className="block mb-8">
+          <div className="group bg-red-50 border border-red-200 rounded-2xl p-5 hover:border-red-300 transition-colors">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-red-600" />
-                <p className="font-semibold text-red-900">⚠️ You have {overdueCount} overdue invoice{overdueCount > 1 ? 's' : ''}</p>
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                  <Bell className="w-4 h-4 text-red-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-red-900">
+                    {overdueCount} overdue invoice{overdueCount > 1 ? 's' : ''}
+                  </p>
+                  <p className="text-sm text-red-700/80">
+                    Send a reminder to get paid faster
+                  </p>
+                </div>
               </div>
+              <ArrowUpRight className="w-5 h-5 text-red-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </div>
-          </Link>
-        )}
+          </div>
+        </Link>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mb-4">
-              <DollarSign className="w-6 h-6 text-white" />
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        {/* Total Revenue — featured dark card */}
+        <div className="bg-coffee text-cream rounded-2xl p-6 lg:p-7 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-tan/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative">
+            <div className="w-10 h-10 bg-cream/10 rounded-xl flex items-center justify-center mb-5">
+              <DollarSign className="w-4 h-4 text-cream" strokeWidth={1.75} />
             </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">Total Revenue</h3>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue, defaultCurrency)}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center mb-4">
-              <FileText className="w-6 h-6 text-white" />
+            <p className="text-cream/60 text-sm mb-2">Total Revenue</p>
+            <p className="font-display text-3xl lg:text-4xl font-semibold">
+              {formatCurrency(stats.totalRevenue, defaultCurrency)}
+            </p>
+            <div className="mt-3 inline-flex items-center gap-1.5 text-tan text-xs">
+              <TrendingUp className="w-3 h-3" />
+              All-time
             </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">Invoices Sent</h3>
-            <p className="text-3xl font-bold text-gray-900">{stats.invoicesSent}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center mb-4">
-              <Clock className="w-6 h-6 text-white" />
-            </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">Pending Amount</h3>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.pendingAmount, defaultCurrency)}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center mb-4">
-              <CheckCircle className="w-6 h-6 text-white" />
-            </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">Paid This Month</h3>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.paidThisMonth, defaultCurrency)}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Invoices</h2>
-          </div>
+        <StatCard
+          icon={FileText}
+          label="Invoices Sent"
+          value={stats.invoicesSent.toString()}
+          hint="Total"
+        />
+        <StatCard
+          icon={Clock}
+          label="Pending Amount"
+          value={formatCurrency(stats.pendingAmount, defaultCurrency)}
+          hint="Awaiting payment"
+        />
+        <StatCard
+          icon={CheckCircle}
+          label="Paid This Month"
+          value={formatCurrency(stats.paidThisMonth, defaultCurrency)}
+          hint="Collected"
+        />
+      </div>
 
-          {invoices.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No invoices yet</h3>
-              <Link href="/dashboard/invoices/create" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
-                <Plus className="w-5 h-5" />Create Invoice
-              </Link>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{invoice.invoice_number}</div>
-                        <div className="text-sm text-gray-500">{formatDate(invoice.issue_date)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.client_name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{formatCurrency(invoice.total, invoice.currency || 'USD')}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${isOverdue(invoice) ? 'bg-red-100 text-red-800' : getStatusColor(invoice.status)}`}>
-                          {isOverdue(invoice) ? 'Overdue' : invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(invoice.due_date)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Link href={`/dashboard/invoices/${invoice.id}`} className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-                          <Eye className="w-4 h-4" />View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Recent Invoices */}
+      <div className="bg-cream-soft rounded-3xl border border-coffee/5 overflow-hidden">
+        <div className="px-6 lg:px-8 py-5 border-b border-coffee/5 flex items-center justify-between">
+          <h2 className="font-display text-xl font-semibold text-coffee">
+            Recent Invoices
+          </h2>
+          {invoices.length > 0 && (
+            <span className="text-sm text-coffee/60">
+              {invoices.length} total
+            </span>
           )}
         </div>
+
+        {invoices.length === 0 ? (
+          <div className="px-6 py-20 text-center">
+            <div className="w-16 h-16 bg-tan-soft rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <FileText className="w-6 h-6 text-coffee" strokeWidth={1.5} />
+            </div>
+            <h3 className="font-display text-xl font-semibold text-coffee mb-2">
+              No invoices yet
+            </h3>
+            <p className="text-coffee/60 mb-6 max-w-sm mx-auto">
+              Create your first invoice and start getting paid in USDC.
+            </p>
+            <Link
+              href="/dashboard/invoices/create"
+              className="inline-flex items-center gap-2 bg-coffee text-cream px-6 py-3 rounded-full font-medium hover:bg-coffee-deep transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Create Invoice
+            </Link>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-xs font-medium text-coffee/50 uppercase tracking-wider border-b border-coffee/5">
+                  <th className="px-6 lg:px-8 py-4">Invoice</th>
+                  <th className="px-6 py-4">Client</th>
+                  <th className="px-6 py-4">Amount</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Due</th>
+                  <th className="px-6 lg:px-8 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-coffee/5">
+                {invoices.map((invoice) => (
+                  <tr
+                    key={invoice.id}
+                    className="hover:bg-cream/60 transition-colors"
+                  >
+                    <td className="px-6 lg:px-8 py-5">
+                      <p className="font-medium text-coffee">
+                        {invoice.invoice_number}
+                      </p>
+                      <p className="text-xs text-coffee/50 mt-0.5">
+                        {formatDate(invoice.issue_date)}
+                      </p>
+                    </td>
+                    <td className="px-6 py-5 text-coffee">
+                      {invoice.client_name}
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="font-display font-semibold text-coffee">
+                        {formatCurrency(
+                          invoice.total,
+                          invoice.currency || 'USD'
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${statusBadge(
+                          invoice
+                        )}`}
+                      >
+                        {isOverdue(invoice)
+                          ? 'Overdue'
+                          : invoice.status.charAt(0).toUpperCase() +
+                            invoice.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-sm text-coffee/70">
+                      {formatDate(invoice.due_date)}
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 text-right">
+                      <Link
+                        href={`/dashboard/invoices/${invoice.id}`}
+                        className="inline-flex items-center gap-1.5 text-sm text-coffee/70 hover:text-coffee transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Mobile floating CTA */}
+      <Link
+        href="/dashboard/invoices/create"
+        className="sm:hidden fixed bottom-6 right-6 z-30 w-14 h-14 bg-coffee text-cream rounded-full flex items-center justify-center shadow-xl shadow-coffee/30"
+        aria-label="Create invoice"
+      >
+        <Plus className="w-5 h-5" />
+      </Link>
+    </div>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="bg-cream-soft rounded-2xl border border-coffee/5 p-6 lg:p-7 hover:border-coffee/15 hover:shadow-lg hover:shadow-coffee/5 transition-all">
+      <div className="w-10 h-10 bg-tan-soft rounded-xl flex items-center justify-center mb-5">
+        <Icon className="w-4 h-4 text-coffee" strokeWidth={1.75} />
+      </div>
+      <p className="text-coffee/60 text-sm mb-2">{label}</p>
+      <p className="font-display text-3xl lg:text-4xl font-semibold text-coffee">
+        {value}
+      </p>
+      <p className="text-xs text-coffee/50 mt-2">{hint}</p>
     </div>
   );
 }

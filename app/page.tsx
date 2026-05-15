@@ -1,341 +1,230 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import Link from "next/link";
+import Image from "next/image";
 import {
-  FileText,
-  CreditCard,
-  Globe,
-  BarChart3,
-  Bell,
-  Repeat,
-  Users,
-  Zap,
-  CheckCircle,
   ArrowRight,
-  Star,
+  Zap,
+  FileText,
+  Send,
+  DollarSign,
+  BarChart3,
+  Globe2,
+  Shield,
+  Clock,
+  TrendingUp,
+  Check,
+  User,
+  Users,
+  Building2,
+  Boxes,
   Menu,
   X,
-  Wallet,
-  Shield,
-  Sparkles,
-  TrendingUp,
-  Clock,
-  DollarSign,
-  ChevronDown,
-} from 'lucide-react';
+} from "lucide-react";
+import { useState, useEffect } from "react";
 
 export default function LandingPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const features = [
-    {
-      icon: FileText,
-      title: 'Beautiful Invoices',
-      description: 'Create professional invoices in seconds with custom branding, your logo, and brand colors.',
-      color: 'from-blue-500 to-blue-600',
-    },
-    {
-      icon: Globe,
-      title: 'Multi-Currency Support',
-      description: 'Bill clients in 15+ currencies including USD, EUR, NGN, GBP, and more. Automatic conversion.',
-      color: 'from-emerald-500 to-emerald-600',
-    },
-    {
-      icon: Wallet,
-      title: 'Crypto Payments via Arc',
-      description: 'Accept payments instantly with Arc blockchain. 0% fees, 10-second settlement, no chargebacks.',
-      color: 'from-purple-500 to-purple-600',
-    },
-    {
-      icon: Repeat,
-      title: 'Recurring Invoices',
-      description: 'Set up monthly retainers and subscriptions. Auto-generate invoices on your schedule.',
-      color: 'from-orange-500 to-orange-600',
-    },
-    {
-      icon: Bell,
-      title: 'Smart Reminders',
-      description: 'Automatic email reminders for overdue invoices. Get paid faster without the awkward follow-ups.',
-      color: 'from-red-500 to-red-600',
-    },
-    {
-      icon: BarChart3,
-      title: 'Powerful Analytics',
-      description: 'Track revenue, top clients, and payment trends. Visual charts and actionable insights.',
-      color: 'from-indigo-500 to-indigo-600',
-    },
-    {
-      icon: Users,
-      title: 'Client Management',
-      description: 'Save client details, track total spend per client, and create invoices in two clicks.',
-      color: 'from-teal-500 to-teal-600',
-    },
-    {
-      icon: Shield,
-      title: 'Bank-Level Security',
-      description: 'Your data is encrypted end-to-end. Built on Supabase and Vercel for enterprise-grade reliability.',
-      color: 'from-cyan-500 to-cyan-600',
-    },
-  ];
-
-  const useCases = [
-    {
-      title: 'Freelancers',
-      description: 'Send professional invoices, get paid in crypto or fiat, and never chase payments again.',
-      icon: '👨‍💻',
-      benefits: ['Professional templates', 'Multi-currency billing', '0% crypto fees'],
-    },
-    {
-      title: 'Agencies',
-      description: 'Manage multiple clients, set up recurring billing, and track team revenue with ease.',
-      icon: '🏢',
-      benefits: ['Recurring invoices', 'Client management', 'Team analytics'],
-    },
-    {
-      title: 'Consultants',
-      description: 'Bill by the hour, project, or retainer. Track time, send invoices, get paid faster.',
-      icon: '💼',
-      benefits: ['Project-based billing', 'PDF generation', 'Email automation'],
-    },
-    {
-      title: 'Web3 Builders',
-      description: 'Native crypto payments via Arc blockchain. Perfect for DAOs, protocols, and Web3 teams.',
-      icon: '⚡',
-      benefits: ['Arc integration', 'USDC/stablecoin support', 'On-chain receipts'],
-    },
-  ];
-
-  const stats = [
-    { number: '0%', label: 'Crypto Fees', icon: Wallet },
-    { number: '15+', label: 'Currencies', icon: Globe },
-    { number: '10s', label: 'Settlement Time', icon: Zap },
-    { number: '∞', label: 'Free Invoices', icon: FileText },
-  ];
-
-  const testimonials = [
-    {
-      name: 'Sarah Chen',
-      role: 'Freelance Designer',
-      content: 'InvFlow saved me hours every month. The 0% crypto fees alone pay for any premium plan elsewhere. Game-changer!',
-      avatar: 'S',
-    },
-    {
-      name: 'Marcus Rodriguez',
-      role: 'Agency Owner',
-      content: 'Finally, an invoicing tool that gets the modern economy. We bill clients in USDC and get paid in seconds.',
-      avatar: 'M',
-    },
-    {
-      name: 'Aisha Bello',
-      role: 'Consultant',
-      content: 'The recurring invoices and reminders are pure magic. My cash flow has never been more predictable.',
-      avatar: 'A',
-    },
-  ];
-
-  const faqs = [
-    {
-      question: 'Is InvFlow really free?',
-      answer: 'Yes! All invoicing features are 100% free forever. You only pay transaction fees when accepting card payments (3%) or crypto payments (0%). No monthly fees, no hidden costs.',
-    },
-    {
-      question: 'How does the Arc blockchain integration work?',
-      answer: 'When clients pay with crypto, the transaction goes directly through Arc blockchain. Settlement happens in ~10 seconds with no intermediaries. You receive the funds in your connected wallet instantly.',
-    },
-    {
-      question: 'Do I need a crypto wallet to use InvFlow?',
-      answer: 'No! You can use InvFlow with traditional email signup and accept card payments. Crypto wallet connection is optional and only needed if you want to accept blockchain payments.',
-    },
-    {
-      question: 'Can I customize my invoices?',
-      answer: 'Absolutely. Add your logo, choose brand colors, customize email templates, and set default payment terms. Make every invoice uniquely yours.',
-    },
-    {
-      question: 'What currencies are supported?',
-      answer: 'We support 15+ currencies including USD, EUR, GBP, NGN, KES, GHS, ZAR, CAD, AUD, JPY, INR, CNY, BRL, MXN, and AED. Plus stablecoins like USDC via Arc.',
-    },
-    {
-      question: 'Is my data secure?',
-      answer: 'Yes. We use bank-level encryption, secure cloud infrastructure (Supabase + Vercel), and never store payment information. Your data is yours alone.',
-    },
-  ];
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all ${
-        scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm' : 'bg-transparent'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-gray-900">InvFlow</span>
-            </div>
+    <main className="min-h-screen bg-cream text-coffee font-sans overflow-x-hidden">
+      {/* ───────────────── NAV ───────────────── */}
+      <nav className="sticky top-0 z-50 backdrop-blur-md bg-cream/80 border-b border-coffee/5">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image
+              src="/logo.png"
+              alt="Inv"
+              width={36}
+              height={42}
+              className="object-contain"
+              priority
+            />
+            <span className="font-display text-2xl font-semibold tracking-tight">
+              Inv
+            </span>
+          </Link>
 
-            <nav className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Features</a>
-              <a href="#pricing" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Pricing</a>
-              <a href="#use-cases" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Use Cases</a>
-              <a href="#faq" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">FAQ</a>
-            </nav>
+          <div className="hidden md:flex items-center gap-10 text-[15px] text-coffee/80">
+            <a href="#features" className="hover:text-coffee transition-colors">
+              Features
+            </a>
+            <a href="#how" className="hover:text-coffee transition-colors">
+              How it Works
+            </a>
+            <a href="#roadmap" className="hover:text-coffee transition-colors">
+              Roadmap
+            </a>
+          </div>
 
-            <div className="hidden md:flex items-center gap-3">
-              <Link href="/dashboard" className="text-gray-700 hover:text-blue-600 font-medium px-4 py-2">
-                Sign In
-              </Link>
-              <Link href="/dashboard" className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg transition-colors">
-                Try It Free
-              </Link>
-            </div>
-
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2"
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="hidden md:inline-flex text-[15px] text-coffee/80 hover:text-coffee transition-colors"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              Log in
+            </Link>
+            <Link
+              href="/signup"
+              className="group inline-flex items-center gap-2 bg-coffee text-cream px-5 py-2.5 rounded-full text-[15px] font-medium hover:bg-coffee-deep transition-all hover:shadow-lg hover:shadow-coffee/20"
+            >
+              Get Started
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="md:hidden p-2 text-coffee"
+              aria-label="Menu"
+            >
+              {mobileOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
           </div>
-
-          {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-gray-200">
-              <nav className="flex flex-col gap-4">
-                <a href="#features" className="text-gray-700 font-medium">Features</a>
-                <a href="#pricing" className="text-gray-700 font-medium">Pricing</a>
-                <a href="#use-cases" className="text-gray-700 font-medium">Use Cases</a>
-                <a href="#faq" className="text-gray-700 font-medium">FAQ</a>
-                <Link href="/dashboard" className="text-gray-700 font-medium">Sign In</Link>
-                <Link href="/dashboard" className="bg-blue-600 text-white font-medium px-5 py-2.5 rounded-lg text-center">Try It Free</Link>
-              </nav>
-            </div>
-          )}
         </div>
-      </header>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-indigo-50"></div>
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-100/30 to-transparent"></div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
-                <Sparkles className="w-4 h-4" />
-                <span>Powered by Arc Blockchain</span>
-              </div>
-              
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight mb-6">
-                Invoicing
-                <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  reinvented.
-                </span>
-              </h1>
-              
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Send beautiful invoices, get paid in crypto or fiat, and grow your business — all in one platform. <strong className="text-gray-900">Free forever.</strong>
-              </p>
+        {mobileOpen && (
+          <div className="md:hidden border-t border-coffee/5 bg-cream/95 backdrop-blur-md">
+            <div className="px-6 py-4 flex flex-col gap-3">
+              <a href="#features" className="py-2 text-coffee/80">
+                Features
+              </a>
+              <a href="#how" className="py-2 text-coffee/80">
+                How it Works
+              </a>
+              <a href="#roadmap" className="py-2 text-coffee/80">
+                Roadmap
+              </a>
+              <Link href="/login" className="py-2 text-coffee/80">
+                Log in
+              </Link>
+            </div>
+          </div>
+        )}
+      </nav>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Link href="/dashboard" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-lg transition-colors flex items-center justify-center gap-2 group">
-                  Start Free
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <a href="#features" className="bg-white border-2 border-gray-200 hover:border-blue-600 text-gray-900 font-semibold px-8 py-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                  See Features
-                </a>
-              </div>
+      {/* ───────────────── HERO ───────────────── */}
+      <section className="relative px-6 lg:px-10 pt-16 lg:pt-24 pb-24 lg:pb-32 overflow-hidden">
+        {/* Falling logos background */}
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+          {[
+            { left: "5%", duration: 18, delay: -3, drift: "30px", rotate: "15deg", size: 22, opacity: 0.06 },
+            { left: "12%", duration: 24, delay: -11, drift: "-25px", rotate: "-18deg", size: 18, opacity: 0.05 },
+            { left: "19%", duration: 20, delay: -7, drift: "40px", rotate: "20deg", size: 26, opacity: 0.07 },
+            { left: "27%", duration: 26, delay: -19, drift: "-35px", rotate: "-22deg", size: 20, opacity: 0.05 },
+            { left: "34%", duration: 22, delay: -15, drift: "30px", rotate: "18deg", size: 24, opacity: 0.06 },
+            { left: "42%", duration: 28, delay: -2, drift: "-40px", rotate: "-15deg", size: 22, opacity: 0.05 },
+            { left: "50%", duration: 19, delay: -13, drift: "45px", rotate: "25deg", size: 28, opacity: 0.07 },
+            { left: "58%", duration: 25, delay: -8, drift: "-30px", rotate: "-20deg", size: 20, opacity: 0.05 },
+            { left: "66%", duration: 21, delay: -17, drift: "35px", rotate: "22deg", size: 24, opacity: 0.06 },
+            { left: "74%", duration: 27, delay: -4, drift: "-45px", rotate: "-18deg", size: 22, opacity: 0.05 },
+            { left: "82%", duration: 23, delay: -21, drift: "40px", rotate: "20deg", size: 26, opacity: 0.07 },
+            { left: "90%", duration: 29, delay: -12, drift: "-35px", rotate: "-25deg", size: 20, opacity: 0.05 },
+            { left: "8%", duration: 30, delay: -24, drift: "50px", rotate: "30deg", size: 18, opacity: 0.05 },
+            { left: "46%", duration: 17, delay: -6, drift: "-30px", rotate: "-15deg", size: 24, opacity: 0.06 },
+            { left: "78%", duration: 26, delay: -16, drift: "30px", rotate: "18deg", size: 22, opacity: 0.06 },
+          ].map((drop, i) => (
+            <div
+              key={i}
+              className="fall-drop"
+              style={{
+                left: drop.left,
+                animationDuration: `${drop.duration}s`,
+                animationDelay: `${drop.delay}s`,
+                ["--fall-drift" as string]: drop.drift,
+                ["--fall-rotate" as string]: drop.rotate,
+                ["--fall-opacity" as string]: drop.opacity,
+              } as React.CSSProperties}
+            >
+              <Image
+                src="/logo.png"
+                alt=""
+                width={drop.size}
+                height={drop.size + 6}
+                className="object-contain"
+              />
+            </div>
+          ))}
+        </div>
 
-              <div className="flex items-center gap-6 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span>Free forever</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span>No credit card needed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span>0% crypto fees</span>
-                </div>
-              </div>
+        <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+          <div className="animate-fade-up">
+            <div className="inline-flex items-center gap-2 bg-tan-soft border border-tan/50 text-coffee px-4 py-1.5 rounded-full text-sm font-medium mb-8">
+              <Zap className="w-3.5 h-3.5 fill-coffee" />
+              Powered by Arc Blockchain
             </div>
 
-            <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-br from-blue-200/50 to-indigo-200/50 rounded-3xl blur-3xl"></div>
-              <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-                <div className="bg-gray-100 border-b border-gray-200 px-4 py-3 flex items-center gap-2">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
+            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-semibold leading-[1.02] tracking-tight text-coffee">
+              Send invoices.
+              <br />
+              Get paid instantly in{" "}
+              <span className="italic font-medium">USDC.</span>
+            </h1>
+
+            <p className="mt-8 text-lg lg:text-xl text-coffee/70 max-w-lg leading-relaxed">
+              Borderless payments powered by Arc blockchain — with built-in
+              accounting.
+            </p>
+
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <Link
+                href="/signup"
+                className="group inline-flex items-center gap-2 bg-coffee text-cream px-7 py-4 rounded-full font-medium hover:bg-coffee-deep transition-all hover:shadow-xl hover:shadow-coffee/25"
+              >
+                Create Invoice
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+
+             <a
+                href="#how"
+                className="inline-flex items-center gap-2 text-coffee px-7 py-4 rounded-full font-medium border border-coffee/15 hover:border-coffee/40 hover:bg-coffee/5 transition-all"
+              >
+                Learn More
+              </a>
+            </div>
+          </div>
+
+          <div
+            className="relative animate-fade-up"
+            style={{ animationDelay: "0.15s" }}
+          >
+            <div className="absolute -inset-4 bg-tan/30 rounded-[2.5rem] blur-2xl opacity-60" />
+            <div className="relative bg-tan-soft rounded-[2rem] p-6 lg:p-8 shadow-xl shadow-coffee/5 hover:shadow-2xl hover:shadow-coffee/10 transition-shadow duration-500">
+              <div className="bg-cream rounded-2xl p-7 mb-5">
+                <div className="flex items-start justify-between mb-7">
+                  <div>
+                    <p className="text-sm text-coffee/60 mb-1">Invoice</p>
+                    <p className="font-display text-2xl font-semibold">
+                      #1234
+                    </p>
                   </div>
-                  <div className="flex-1 text-center text-sm text-gray-500">invflow.com/dashboard</div>
+                  <span className="inline-flex items-center gap-1.5 bg-sage/40 text-sage-deep text-xs font-medium px-3 py-1 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sage-deep animate-pulse-dot" />
+                    Paid
+                  </span>
                 </div>
-                
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Dashboard</h3>
-                      <p className="text-sm text-gray-500">Welcome back!</p>
-                    </div>
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">+ New Invoice</button>
-                  </div>
+                <div className="flex items-center justify-between py-4 border-t border-coffee/10">
+                  <span className="text-coffee/60 text-sm">Amount</span>
+                  <span className="font-display text-2xl font-semibold">
+                    $2,500.00
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-4 border-t border-coffee/10">
+                  <span className="text-coffee/60 text-sm">Payment Time</span>
+                  <span className="font-medium text-coffee">3 seconds</span>
+                </div>
+              </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <DollarSign className="w-5 h-5 text-blue-600" />
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900">$24,567</p>
-                      <p className="text-xs text-gray-600">Total Revenue</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <FileText className="w-5 h-5 text-emerald-600" />
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900">142</p>
-                      <p className="text-xs text-gray-600">Invoices Sent</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {[
-                      { num: 'INV-042', client: 'Acme Corp', amount: '$2,500', status: 'Paid', color: 'bg-green-100 text-green-800' },
-                      { num: 'INV-041', client: 'TechStart Inc', amount: '$1,200', status: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
-                      { num: 'INV-040', client: 'Global Traders', amount: '$3,800', status: 'Paid', color: 'bg-green-100 text-green-800' },
-                    ].map((inv, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <FileText className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{inv.num}</p>
-                            <p className="text-xs text-gray-500">{inv.client}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900">{inv.amount}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${inv.color}`}>{inv.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-cream rounded-2xl p-5 hover:-translate-y-1 transition-transform duration-300">
+                  <p className="font-display text-3xl font-semibold">$12.5K</p>
+                  <p className="text-sm text-coffee/60 mt-1">This Month</p>
+                </div>
+                <div className="bg-cream rounded-2xl p-5 hover:-translate-y-1 transition-transform duration-300">
+                  <p className="font-display text-3xl font-semibold">24</p>
+                  <p className="text-sm text-coffee/60 mt-1">Invoices Sent</p>
                 </div>
               </div>
             </div>
@@ -343,96 +232,465 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-white border-y border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, i) => (
-              <div key={i} className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-3">
-                  <stat.icon className="w-6 h-6 text-blue-600" />
-                </div>
-                <p className="text-4xl md:text-5xl font-bold text-gray-900 mb-1">{stat.number}</p>
-                <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
-              ✨ Features
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Everything you need to <span className="text-blue-600">get paid faster</span>
+      {/* ───────────────── HOW IT WORKS ───────────────── */}
+      <section id="how" className="px-6 lg:px-10 py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight text-coffee">
+              How It Works
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              From invoice creation to payment collection, InvFlow has every tool you need to streamline your billing process.
+            <p className="mt-4 text-lg text-coffee/70">
+              Get paid in three simple steps
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 hover:shadow-xl transition-all group border border-gray-100">
-                <div className={`w-12 h-12 bg-gradient-to-br ${feature.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <feature.icon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Get paid in <span className="text-blue-600">3 steps</span>
-            </h2>
-            <p className="text-xl text-gray-600">Simple, fast, and powerful.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            <div className="absolute top-12 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-200 hidden md:block"></div>
-            
+          <div className="grid md:grid-cols-3 gap-6">
             {[
               {
-                step: '01',
-                title: 'Create',
-                description: 'Build a professional invoice in seconds with custom branding, currency, and recurring options.',
                 icon: FileText,
-                color: 'from-blue-500 to-blue-600',
+                step: "1",
+                title: "Create Invoice",
+                desc: "Design professional invoices in minutes. Add your branding, line items, and payment terms.",
               },
               {
-                step: '02',
-                title: 'Send',
-                description: 'Email or share via link. Clients view a beautiful, mobile-friendly invoice with payment options.',
-                icon: ArrowRight,
-                color: 'from-indigo-500 to-indigo-600',
+                icon: Send,
+                step: "2",
+                title: "Send to Client",
+                desc: "Share via email or link. Your client can pay instantly with USDC from anywhere in the world.",
               },
               {
-                step: '03',
-                title: 'Get Paid',
-                description: 'Accept payments via card (3%) or crypto via Arc blockchain (0% fees, 10s settlement).',
-                icon: CheckCircle,
-                color: 'from-emerald-500 to-emerald-600',
+                icon: DollarSign,
+                step: "3",
+                title: "Receive USDC Instantly",
+                desc: "Payments settle in seconds on Arc blockchain. No delays, no intermediaries, no hassle.",
               },
-            ].map((item, i) => (
-              <div key={i} className="relative bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-lg transition-all">
-                <div className={`w-16 h-16 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mb-4 mx-auto relative z-10`}>
-                  <item.icon className="w-8 h-8 text-white" />
+            ].map((s) => (
+              <div
+                key={s.step}
+                className="group relative bg-cream-soft rounded-3xl p-8 border border-coffee/5 hover:border-coffee/15 hover:shadow-xl hover:shadow-coffee/5 hover:-translate-y-1 transition-all duration-300"
+              >
+                <div className="flex items-start justify-between mb-6">
+                  <div className="w-14 h-14 bg-tan-soft rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 group-hover:bg-tan transition-all duration-300">
+                    <s.icon
+                      className="w-6 h-6 text-coffee group-hover:bounce-subtle"
+                      strokeWidth={1.75}
+                    />
+                  </div>
+                  <span className="font-display text-5xl font-semibold text-coffee/10 group-hover:text-coffee/20 leading-none transition-colors duration-300">
+                    {s.step}
+                  </span>
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-bold text-blue-600 mb-2">STEP {item.step}</p>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">{item.title}</h3>
-                  <p className="text-gray-600">{item.description}</p>
+                <h3 className="font-display text-2xl font-semibold text-coffee mb-3">
+                  {s.title}
+                </h3>
+                <p className="text-coffee/70 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───────────────── EVERYTHING YOU NEED ───────────────── */}
+      <section id="features" className="px-6 lg:px-10 py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight text-coffee">
+              Everything You Need
+            </h2>
+            <p className="mt-4 text-lg text-coffee/70">
+              A complete invoicing and accounting solution
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-14">
+            {[
+              {
+                icon: Zap,
+                title: "Instant USDC Payments",
+                desc: "Receive payments in seconds via Arc blockchain. No waiting for bank transfers.",
+              },
+              {
+                icon: BarChart3,
+                title: "Built-in Accounting",
+                desc: "Track income, expenses, and cash flow in real-time with automated bookkeeping.",
+              },
+              {
+                icon: Globe2,
+                title: "Cross-Border Payments",
+                desc: "Accept payments from clients worldwide without international fees or delays.",
+              },
+              {
+                icon: Shield,
+                title: "Secure & Transparent",
+                desc: "Blockchain-powered security with complete transaction transparency and audit trails.",
+              },
+              {
+                icon: Clock,
+                title: "Automated Bookkeeping",
+                desc: "No manual entry needed. Every transaction is automatically recorded and categorized.",
+              },
+              {
+                icon: TrendingUp,
+                title: "Financial Insights",
+                desc: "Real-time dashboards and reports to understand your business performance.",
+              },
+            ].map((f) => (
+              <div key={f.title} className="group cursor-default">
+                <div className="w-12 h-12 bg-tan-soft rounded-xl flex items-center justify-center mb-5 group-hover:bg-tan group-hover:scale-110 transition-all duration-300">
+                  <f.icon
+                    className="w-5 h-5 text-coffee group-hover:wiggle"
+                    strokeWidth={1.75}
+                  />
+                </div>
+                <h3 className="font-display text-xl font-semibold text-coffee mb-2.5 group-hover:translate-x-0.5 transition-transform duration-300">
+                  {f.title}
+                </h3>
+                <p className="text-coffee/70 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───────────────── WHY CHOOSE INV ───────────────── */}
+      <section className="px-6 lg:px-10 py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto bg-coffee rounded-[2.5rem] p-10 lg:p-16 text-cream relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-tan/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+
+          <div className="relative grid lg:grid-cols-2 gap-12 lg:gap-16">
+            <div>
+              <h2 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight">
+                Why Choose Inv?
+              </h2>
+              <p className="mt-6 text-cream/70 text-lg leading-relaxed max-w-md">
+                Traditional invoicing is slow, expensive, and complicated. Inv
+                brings speed, simplicity, and transparency to business
+                payments.
+              </p>
+
+              <div className="mt-10 space-y-6">
+                {[
+                  {
+                    title: "No International Payment Delays",
+                    desc: "Get paid instantly, regardless of where your clients are located.",
+                  },
+                  {
+                    title: "No Manual Accounting Stress",
+                    desc: "Every transaction is automatically recorded and categorized for you.",
+                  },
+                  {
+                    title: "One Platform for Everything",
+                    desc: "Invoicing, payments, and accounting — all in one place.",
+                  },
+                  {
+                    title: "Built for Modern Businesses",
+                    desc: "Perfect for freelancers, remote teams, and Web3-native companies.",
+                  },
+                ].map((b) => (
+                  <div key={b.title} className="group flex gap-4">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-tan flex items-center justify-center mt-0.5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
+                      <Check
+                        className="w-3.5 h-3.5 text-coffee"
+                        strokeWidth={3}
+                      />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-cream mb-1 group-hover:text-tan transition-colors duration-300">
+                        {b.title}
+                      </h4>
+                      <p className="text-cream/70 text-sm leading-relaxed">
+                        {b.desc}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-coffee-deep rounded-3xl p-8 lg:p-10 self-center w-full border border-cream/5">
+              <p className="text-cream/50 text-sm uppercase tracking-wider mb-6">
+                Payment Speed Comparison
+              </p>
+
+              {[
+                { label: "Traditional Banking", time: "3-5 days", width: 95 },
+                {
+                  label: "Online Payment Platforms",
+                  time: "1-2 days",
+                  width: 60,
+                },
+                {
+                  label: "Inv (Arc Blockchain)",
+                  time: "3 seconds",
+                  width: 8,
+                  highlight: true,
+                },
+              ].map((row, i) => (
+                <div key={row.label} className="mb-7 last:mb-0">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span
+                      className={`font-medium ${
+                        row.highlight ? "text-tan" : "text-cream"
+                      }`}
+                    >
+                      {row.label}
+                    </span>
+                    <span
+                      className={`text-sm ${
+                        row.highlight
+                          ? "text-tan font-semibold"
+                          : "text-cream/60"
+                      }`}
+                    >
+                      {row.time}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-cream/10 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full fill-bar ${
+                        row.highlight ? "bg-tan" : "bg-cream/40"
+                      }`}
+                      style={{
+                        width: `${row.width}%`,
+                        animationDelay: `${i * 0.2}s`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ───────────────── SIMPLE POWERFUL DASHBOARD ───────────────── */}
+      <section className="px-6 lg:px-10 py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight text-coffee">
+              Simple, Powerful Dashboard
+            </h2>
+            <p className="mt-4 text-lg text-coffee/70">
+              Everything you need to manage your business finances
+            </p>
+          </div>
+
+          <div className="bg-cream-soft rounded-3xl shadow-2xl shadow-coffee/10 border border-coffee/5 overflow-hidden hover:shadow-coffee/20 transition-shadow duration-500">
+            <div className="flex items-center gap-2 px-5 py-4 border-b border-coffee/5 bg-cream">
+              <div className="w-3 h-3 rounded-full bg-coffee/15" />
+              <div className="w-3 h-3 rounded-full bg-coffee/15" />
+              <div className="w-3 h-3 rounded-full bg-coffee/15" />
+            </div>
+
+            <div className="p-6 lg:p-10">
+              <div className="grid md:grid-cols-3 gap-4 mb-8">
+                <div className="bg-coffee text-cream rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg hover:shadow-coffee/20 transition-all duration-300">
+                  <p className="text-cream/60 text-sm mb-2">Total Revenue</p>
+                  <p className="font-display text-4xl font-semibold mb-1">
+                    $48,250
+                  </p>
+                  <p className="text-tan text-sm flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    12.5% this month
+                  </p>
+                </div>
+                <div className="bg-tan-soft rounded-2xl p-6 hover:-translate-y-1 hover:bg-tan transition-all duration-300">
+                  <p className="text-coffee/60 text-sm mb-2">
+                    Pending Invoices
+                  </p>
+                  <p className="font-display text-4xl font-semibold mb-1 text-coffee">
+                    8
+                  </p>
+                  <p className="text-coffee/60 text-sm">$12,400 outstanding</p>
+                </div>
+                <div className="bg-tan-soft rounded-2xl p-6 hover:-translate-y-1 hover:bg-tan transition-all duration-300">
+                  <p className="text-coffee/60 text-sm mb-2">
+                    Avg Payment Time
+                  </p>
+                  <p className="font-display text-4xl font-semibold mb-1 text-coffee">
+                    3.2s
+                  </p>
+                  <p className="text-coffee/60 text-sm">Via Arc blockchain</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  {
+                    id: "1245",
+                    client: "Acme Corp",
+                    date: "May 10, 2026",
+                    amount: "$3,200.00",
+                    status: "Paid",
+                  },
+                  {
+                    id: "1244",
+                    client: "TechStart Ltd",
+                    date: "May 8, 2026",
+                    amount: "$1,850.00",
+                    status: "Pending",
+                  },
+                  {
+                    id: "1243",
+                    client: "Global Inc",
+                    date: "May 5, 2026",
+                    amount: "$5,600.00",
+                    status: "Paid",
+                  },
+                ].map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="group flex items-center justify-between p-5 rounded-2xl border border-coffee/5 hover:bg-cream hover:border-coffee/15 hover:translate-x-1 transition-all duration-300"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 bg-coffee rounded-xl flex items-center justify-center group-hover:rotate-6 group-hover:scale-105 transition-transform duration-300">
+                        <FileText
+                          className="w-4 h-4 text-cream"
+                          strokeWidth={1.75}
+                        />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-coffee">
+                          Invoice #{inv.id}
+                        </p>
+                        <p className="text-coffee/60 text-sm">
+                          {inv.client} · {inv.date}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display text-xl font-semibold text-coffee">
+                        {inv.amount}
+                      </p>
+                      <span
+                        className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
+                          inv.status === "Paid"
+                            ? "bg-sage/40 text-sage-deep"
+                            : "bg-amber/30 text-amber-deep"
+                        }`}
+                      >
+                        {inv.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ───────────────── WHO CAN USE ───────────────── */}
+      <section className="px-6 lg:px-10 py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight text-coffee">
+              Who Can Use Inv
+            </h2>
+            <p className="mt-4 text-lg text-coffee/70">
+              Built for modern businesses of every shape
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              {
+                icon: User,
+                title: "Freelancers",
+                desc: "Get paid faster from clients anywhere in the world.",
+              },
+              {
+                icon: Building2,
+                title: "Agencies",
+                desc: "Manage multiple clients with branded, professional invoices.",
+              },
+              {
+                icon: Users,
+                title: "Remote Teams",
+                desc: "Pay contractors and vendors across borders in seconds.",
+              },
+              {
+                icon: Boxes,
+                title: "Web3 Companies",
+                desc: "Native crypto-first invoicing built for on-chain operations.",
+              },
+            ].map((a) => (
+              <div
+                key={a.title}
+                className="group bg-cream-soft rounded-3xl p-7 border border-coffee/5 hover:border-coffee hover:bg-coffee hover:text-cream hover:-translate-y-2 hover:shadow-xl hover:shadow-coffee/10 transition-all duration-300"
+              >
+                <div className="w-12 h-12 bg-tan-soft group-hover:bg-cream rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300">
+                  <a.icon
+                    className="w-5 h-5 text-coffee group-hover:bounce-subtle"
+                    strokeWidth={1.75}
+                  />
+                </div>
+                <h3 className="font-display text-xl font-semibold mb-2">
+                  {a.title}
+                </h3>
+                <p className="text-coffee/70 group-hover:text-cream/70 text-sm leading-relaxed transition-colors">
+                  {a.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───────────────── ROADMAP ───────────────── */}
+      <section id="roadmap" className="px-6 lg:px-10 py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight text-coffee">
+              What&apos;s Coming Next
+            </h2>
+            <p className="mt-4 text-lg text-coffee/70">
+              Building the future of business finance
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                quarter: "Q3 2026",
+                title: "Arc Mainnet Launch",
+                desc: "Migration to Arc mainnet for enhanced security and lower transaction costs.",
+                tags: ["Blockchain", "Security"],
+              },
+              {
+                quarter: "Q4 2026",
+                title: "On-Ramp / Off-Ramp",
+                desc: "Convert between USDC and local currencies seamlessly within the platform.",
+                tags: ["Payments", "Fiat"],
+              },
+              {
+                quarter: "2027",
+                title: "Mobile Apps",
+                desc: "Native iOS and Android apps to invoice, get paid, and manage your business on the go.",
+                tags: ["iOS", "Android"],
+              },
+            ].map((r) => (
+              <div
+                key={r.title}
+                className="group relative bg-cream-soft rounded-3xl p-8 border border-coffee/5 hover:shadow-xl hover:shadow-coffee/5 hover:-translate-y-1 hover:border-coffee/15 transition-all duration-300"
+              >
+                <div className="absolute top-0 left-8 right-8 h-1 bg-gradient-to-r from-accent to-tan rounded-b-full group-hover:left-4 group-hover:right-4 transition-all duration-500" />
+                <p className="text-accent text-sm font-medium uppercase tracking-wider mb-4 mt-2">
+                  {r.quarter}
+                </p>
+                <h3 className="font-display text-2xl font-semibold text-coffee mb-3">
+                  {r.title}
+                </h3>
+                <p className="text-coffee/70 leading-relaxed mb-6">{r.desc}</p>
+                <div className="flex flex-wrap gap-2">
+                  {r.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="text-xs px-3 py-1 bg-tan-soft rounded-full text-coffee/80 hover:bg-tan hover:text-coffee transition-colors"
+                    >
+                      {t}
+                    </span>
+                  ))}
                 </div>
               </div>
             ))}
@@ -440,299 +698,165 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Use Cases */}
-      <section id="use-cases" className="py-24 bg-gradient-to-br from-blue-50 to-indigo-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Built for <span className="text-blue-600">modern businesses</span>
-            </h2>
-            <p className="text-xl text-gray-600">Whatever you do, InvFlow makes billing simple.</p>
-          </div>
+      {/* ───────────────── FINAL CTA ───────────────── */}
+      <section className="px-6 lg:px-10 pb-24">
+        <div className="max-w-7xl mx-auto rounded-[2.5rem] overflow-hidden relative">
+          {/* Image carousel */}
+          <CTACarousel />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {useCases.map((useCase, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 hover:shadow-xl transition-all group">
-                <div className="text-5xl mb-4">{useCase.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{useCase.title}</h3>
-                <p className="text-gray-600 text-sm mb-4">{useCase.description}</p>
-                <ul className="space-y-2">
-                  {useCase.benefits.map((benefit, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-gray-700">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      {benefit}
+          {/* Lighter overlay so images show through */}
+          <div className="absolute inset-0 bg-coffee/15" />
+          <div className="absolute inset-0 bg-gradient-to-br from-coffee/20 via-coffee/10 to-coffee-deep/70" />
+
+          {/* Decorative glows */}
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-tan/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Content */}
+          <div className="relative px-10 py-20 lg:py-28 text-center text-cream">
+            <h2 className="font-display text-4xl lg:text-6xl font-semibold tracking-tight max-w-3xl mx-auto leading-[1.05]">
+              Ready to transform your invoicing?
+            </h2>
+            <p className="mt-6 text-cream/80 text-lg max-w-xl mx-auto">
+              Join modern businesses using Inv for instant payments and
+              seamless accounting.
+            </p>
+            <Link
+              href="/signup"
+              className="group mt-10 inline-flex items-center gap-2 bg-cream text-coffee px-8 py-4 rounded-full font-medium hover:bg-tan-soft hover:scale-105 transition-all hover:shadow-2xl"
+            >
+              Get Started Free
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ───────────────── FOOTER ───────────────── */}
+      <footer className="px-6 lg:px-10 py-16 border-t border-coffee/10">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-4 gap-10 mb-12">
+            <div>
+              <Link href="/" className="group flex items-center gap-2.5 mb-5">
+                <Image
+                  src="/logo.png"
+                  alt="Inv"
+                  width={36}
+                  height={42}
+                  className="object-contain group-hover:rotate-6 transition-transform duration-300"
+                />
+                <span className="font-display text-2xl font-semibold">
+                  Inv
+                </span>
+              </Link>
+              <p className="text-coffee/70 text-sm leading-relaxed max-w-xs">
+                Crypto-powered invoicing and accounting for modern businesses.
+              </p>
+            </div>
+
+            {[
+              {
+                title: "Product",
+                links: ["Features", "Pricing", "Security", "Roadmap"],
+              },
+              {
+                title: "Company",
+                links: ["About", "Blog", "Careers", "Contact"],
+              },
+              {
+                title: "Resources",
+                links: ["Documentation", "API Reference", "Support", "Status"],
+              },
+            ].map((col) => (
+              <div key={col.title}>
+                <h4 className="font-semibold text-coffee mb-4">{col.title}</h4>
+                <ul className="space-y-3">
+                  {col.links.map((l) => (
+                    <li key={l}>
+                      
+                      <a
+                        href="#"
+                        className="text-sm text-coffee/70 hover:text-coffee hover:translate-x-1 inline-block transition-all duration-200"
+                      >
+                        {l}
+                      </a>
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
-              💎 Transparent Pricing
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Simple pricing.
-              <span className="block text-blue-600">No surprises.</span>
-            </h2>
-            <p className="text-xl text-gray-600">Free forever for invoicing. Pay only when you accept payments.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Free Plan */}
-            <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 hover:border-blue-300 transition-all">
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Free Forever</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold text-gray-900">$0</span>
-                  <span className="text-gray-500">/month</span>
-                </div>
-                <p className="text-sm text-gray-600 mt-2">Everything you need to invoice</p>
-              </div>
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Unlimited invoices',
-                  'Unlimited clients',
-                  'Multi-currency support',
-                  'PDF generation',
-                  'Email automation',
-                  'Recurring invoices',
-                  'Analytics dashboard',
-                  'Smart reminders',
-                ].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-gray-700">
-                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    {feat}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/dashboard" className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 rounded-lg text-center transition-colors">
-                Get Started Free
-              </Link>
-            </div>
-
-            {/* Payment Fees - Featured */}
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl p-8 text-white relative shadow-2xl scale-105">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-yellow-900 text-xs font-bold px-4 py-1 rounded-full">
-                MOST POPULAR
-              </div>
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold mb-2">Pay Per Transaction</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold">0%</span>
-                  <span className="text-blue-200">crypto fees</span>
-                </div>
-                <p className="text-sm text-blue-100 mt-2">+ 3% on card payments</p>
-              </div>
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Everything in Free, plus:',
-                  '0% crypto fees via Arc',
-                  '3% card processing',
-                  'USDC & stablecoins',
-                  '10-second settlement',
-                  'No chargebacks (crypto)',
-                  'Pay-as-you-go',
-                  'No monthly fees',
-                ].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-300 flex-shrink-0" />
-                    {feat}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/dashboard" className="block w-full bg-white hover:bg-gray-100 text-blue-600 font-semibold py-3 rounded-lg text-center transition-colors">
-                Start Accepting Payments
-              </Link>
-            </div>
-
-            {/* Pro Plan */}
-            <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 hover:border-purple-300 transition-all">
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Pro <span className="text-sm font-normal text-purple-600">(Coming Soon)</span></h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold text-gray-900">$9</span>
-                  <span className="text-gray-500">/month</span>
-                </div>
-                <p className="text-sm text-gray-600 mt-2">For growing businesses</p>
-              </div>
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Everything in Free, plus:',
-                  'Custom domain',
-                  'Remove "Powered by InvFlow"',
-                  'Priority support',
-                  'Advanced analytics',
-                  'API access',
-                  'Team members (5)',
-                  'White-label invoices',
-                ].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-gray-700">
-                    <CheckCircle className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                    {feat}
-                  </li>
-                ))}
-              </ul>
-              <button disabled className="block w-full bg-gray-100 text-gray-500 font-semibold py-3 rounded-lg text-center cursor-not-allowed">
-                Coming Soon
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-12 text-center">
-            <p className="text-gray-600">
-              <strong>No credit card required.</strong> Start invoicing in 60 seconds.
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-coffee/10">
+            <p className="text-sm text-coffee/60">
+              © 2026 Inv. All rights reserved.
             </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="flex items-center justify-center gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-6 h-6 fill-yellow-400 text-yellow-400" />
-              ))}
+            <div className="flex items-center gap-6 text-sm text-coffee/60">
+              
+              <a
+                href="#"
+                className="hover:text-coffee hover:-translate-y-0.5 inline-block transition-all duration-200"
+              >
+                Privacy
+              </a>
+              
+              <a
+                href="#"
+                className="hover:text-coffee hover:-translate-y-0.5 inline-block transition-all duration-200"
+              >
+                Terms
+              </a>
+              
+              <a
+                href="#"
+                className="hover:text-coffee hover:-translate-y-0.5 inline-block transition-all duration-200"
+              >
+                Twitter
+              </a>
+              
+              <a
+                href="#"
+                className="hover:text-coffee hover:-translate-y-0.5 inline-block transition-all duration-200"
+              >
+                LinkedIn
+              </a>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Loved by <span className="text-blue-600">freelancers worldwide</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((t, i) => (
-              <div key={i} className="bg-white rounded-2xl p-8 hover:shadow-xl transition-all">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, j) => (
-                    <Star key={j} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-700 mb-6 leading-relaxed">"{t.content}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{t.name}</p>
-                    <p className="text-sm text-gray-500">{t.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="py-24 bg-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Frequently asked <span className="text-blue-600">questions</span>
-            </h2>
-            <p className="text-xl text-gray-600">Everything you need to know about InvFlow.</p>
-          </div>
-
-          <div className="space-y-4">
-            {faqs.map((faq, i) => (
-              <div key={i} className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-100 transition-colors"
-                >
-                  <span className="font-semibold text-gray-900">{faq.question}</span>
-                  <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
-                </button>
-                {openFaq === i && (
-                  <div className="px-6 pb-5">
-                    <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-24 bg-gradient-to-br from-blue-600 to-indigo-700 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.15)_0%,_transparent_70%)]"></div>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
-          <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
-            Ready to get paid faster?
-          </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of freelancers, agencies, and businesses using InvFlow to streamline their invoicing.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/dashboard" className="bg-white hover:bg-gray-100 text-blue-600 font-semibold px-8 py-4 rounded-lg transition-colors flex items-center justify-center gap-2 group">
-              Start Free Now
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <a href="#features" className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-8 py-4 rounded-lg border-2 border-blue-500 transition-colors">
-              Learn More
-            </a>
-          </div>
-          <p className="text-blue-200 text-sm mt-6">
-            ✓ No credit card required ✓ Free forever ✓ 60-second setup
-          </p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            <div className="col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-2xl font-bold text-white">InvFlow</span>
-              </div>
-              <p className="text-gray-400 mb-4 max-w-md">
-                Modern invoicing platform powered by Arc blockchain. Get paid faster, anywhere in the world.
-              </p>
-              <p className="text-sm text-gray-500">
-                Built by <a href="https://christiandesign.studio" className="text-blue-400 hover:text-blue-300">Christian Design Studio</a>
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="text-white font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#features" className="hover:text-white">Features</a></li>
-                <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
-                <li><a href="#use-cases" className="hover:text-white">Use Cases</a></li>
-                <li><Link href="/dashboard" className="hover:text-white">Dashboard</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white">About</a></li>
-                <li><a href="#faq" className="hover:text-white">FAQ</a></li>
-                <li><a href="#" className="hover:text-white">Privacy</a></li>
-                <li><a href="#" className="hover:text-white">Terms</a></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm">© 2026 InvFlow. All rights reserved.</p>
-            <p className="text-sm">Powered by Arc Blockchain ⚡</p>
           </div>
         </div>
       </footer>
+    </main>
+  );
+}
+
+/* ───────────────── CTA Image Carousel ───────────────── */
+function CTACarousel() {
+  const [current, setCurrent] = useState(0);
+  const images = [
+    "/cta/business-meeting.jpg",
+    "/cta/fashion-designer.jpg",
+    "/cta/analytics.jpg",
+    "/cta/small-business.jpg",
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % images.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [images.length]);
+
+  return (
+    <div className="absolute inset-0">
+      {images.map((src, i) => (
+        <div
+          key={src}
+          className="absolute inset-0 transition-opacity duration-[1500ms] ease-in-out"
+          style={{ opacity: i === current ? 1 : 0 }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt="" className="w-full h-full object-cover" />
+        </div>
+      ))}
     </div>
   );
 }

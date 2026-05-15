@@ -17,6 +17,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User token required' }, { status: 400 });
     }
 
+    const supabase = await createClient();
+
+    // Mark PIN as set first
+    await supabase
+      .from('companies')
+      .update({ circle_pin_set: true })
+      .eq('id', company.id);
+
     const wallets = await getUserWallets(userToken);
 
     if (wallets.length === 0) {
@@ -26,13 +34,11 @@ export async function POST(request: NextRequest) {
     const primaryWallet = wallets[0];
     const balance = await getWalletBalance(userToken, primaryWallet.id);
 
-    const supabase = await createClient();
     await supabase
       .from('companies')
       .update({
         circle_wallet_id: primaryWallet.id,
         circle_wallet_address: primaryWallet.address,
-        circle_pin_set: true,
       })
       .eq('id', company.id);
 
