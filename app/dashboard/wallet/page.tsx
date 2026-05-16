@@ -93,7 +93,7 @@ export default function WalletPage() {
     }
   };
 
-  const setupPin = async () => {
+  const setupPin = async () => { 
     if (!sdk) return;
     setSetupInProgress(true);
 
@@ -114,11 +114,18 @@ export default function WalletPage() {
           return;
         }
 
-        if (result?.status === 'COMPLETE') {
-          setPinSet(true);
-          await loadWallets(userToken);
-          alert('Wallet created successfully');
-        }
+       if (result?.status === 'COMPLETE') {
+           setPinSet(true);
+           // Wait for Circle to provision the wallet, then retry
+           await new Promise(resolve => setTimeout(resolve, 3000));
+           await loadWallets(userToken);
+           // Retry once more if still not loaded
+           await new Promise(resolve => setTimeout(resolve, 2000));
+           await loadWallets(userToken);
+           alert('Wallet created successfully');
+
+         }
+
         setSetupInProgress(false);
       });
     } catch (error: any) {
