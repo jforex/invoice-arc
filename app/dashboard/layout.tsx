@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
 import {
   LayoutDashboard,
+  Inbox,
   FileText,
   Wallet,
   Users,
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/dashboard/recurring', label: 'Recurring', icon: Repeat },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/inbox', label: 'Inbox', icon: Inbox },
 ];
 
 export default function DashboardLayout({

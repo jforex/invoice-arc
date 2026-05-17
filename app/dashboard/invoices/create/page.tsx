@@ -158,7 +158,20 @@ export default function CreateInvoicePage() {
 
       if (itemsToInsert.length > 0) {
         await supabase.from('invoice_items').insert(itemsToInsert);
+
       }
+
+      // Trigger auto-pay check
+      try {
+        await fetch('/api/trigger-autopay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceId: newInvoice.id }),
+        });
+      } catch (err) {
+      console.log('Auto-pay check failed (non-blocking):', err);
+      
+    }
 
       router.push(`/dashboard/invoices/${newInvoice.id}`);
     } catch (err: any) {

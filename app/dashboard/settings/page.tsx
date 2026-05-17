@@ -1,5 +1,6 @@
 'use client';
 
+import AutoPaySettings from './AutoPaySettings';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase-client';
@@ -11,11 +12,12 @@ import {
   Upload,
   X,
   Check,
+  Zap,
 } from 'lucide-react';
 import { CURRENCIES } from '@/lib/currency';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'company' | 'branding' | 'defaults'>(
+  const [activeTab, setActiveTab] = useState<'company' | 'branding' | 'defaults' | 'autopay'>(
     'company'
   );
   const [loading, setLoading] = useState(true);
@@ -118,6 +120,7 @@ export default function SettingsPage() {
     { id: 'company' as const, label: 'Company', icon: Building },
     { id: 'branding' as const, label: 'Branding', icon: Palette },
     { id: 'defaults' as const, label: 'Defaults', icon: Sliders },
+    { id: 'autopay' as const, label: 'Auto-Pay', icon: Zap },
   ];
 
   return (
@@ -162,244 +165,248 @@ export default function SettingsPage() {
         </aside>
 
         {/* Form panel */}
-        <div className="bg-cream-soft border border-coffee/5 rounded-3xl p-6 lg:p-8">
-          {activeTab === 'company' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-coffee">
-                  Company Info
-                </h2>
-                <p className="text-coffee/60 text-sm mt-1">
-                  This information appears on your invoices and emails
-                </p>
-              </div>
-
-              <Field label="Company Name" required>
-                <input
-                  type="text"
-                  placeholder="Your Company Inc."
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Email">
-                <input
-                  type="email"
-                  placeholder="billing@yourcompany.com"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Phone">
-                <input
-                  type="tel"
-                  placeholder="+1 555 000 0000"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Address">
-                <textarea
-                  placeholder="123 Main St, City, State, Country"
-                  value={form.address}
-                  onChange={(e) =>
-                    setForm({ ...form, address: e.target.value })
-                  }
-                  rows={3}
-                  className={`${inputClass} resize-none`}
-                />
-              </Field>
-            </div>
-          )}
-
-          {activeTab === 'branding' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-coffee">
-                  Branding
-                </h2>
-                <p className="text-coffee/60 text-sm mt-1">
-                  Customize how your invoices look to clients
-                </p>
-              </div>
-
-              {/* Logo */}
-              <Field label="Logo">
-                <div className="flex items-start gap-5">
-                  {form.logo_url ? (
-                    <div className="relative group">
-                      <div className="w-28 h-28 bg-cream rounded-2xl border border-coffee/10 flex items-center justify-center overflow-hidden p-3">
-                        <Image
-                          src={form.logo_url}
-                          alt="Company logo"
-                          width={112}
-                          height={112}
-                          className="object-contain max-h-full max-w-full"
-                          unoptimized
-                        />
-                      </div>
-                      <button
-                        onClick={removeLogo}
-                        className="absolute -top-2 -right-2 w-7 h-7 bg-coffee text-cream rounded-full flex items-center justify-center hover:bg-coffee-deep transition-colors shadow-md"
-                        aria-label="Remove logo"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-28 h-28 bg-cream border-2 border-dashed border-coffee/15 rounded-2xl flex items-center justify-center">
-                      <Building
-                        className="w-7 h-7 text-coffee/30"
-                        strokeWidth={1.5}
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex-1">
-                    <label className="inline-flex items-center gap-2 bg-cream hover:bg-tan-soft border border-coffee/10 px-4 py-2.5 rounded-xl text-sm font-medium text-coffee cursor-pointer transition-colors">
-                      <Upload className="w-3.5 h-3.5" />
-                      {uploading
-                        ? 'Uploading…'
-                        : form.logo_url
-                        ? 'Replace logo'
-                        : 'Upload logo'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        disabled={uploading}
-                        className="hidden"
-                      />
-                    </label>
-                    <p className="text-xs text-coffee/50 mt-3 leading-relaxed">
-                      PNG or JPG. Recommended size 400×400px. Max 2MB.
+        <div>
+          {activeTab === 'autopay' ? (
+            <AutoPaySettings />
+          ) : (
+            <div className="bg-cream-soft border border-coffee/5 rounded-3xl p-6 lg:p-8">
+              {activeTab === 'company' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="font-display text-2xl font-semibold text-coffee">
+                      Company Info
+                    </h2>
+                    <p className="text-coffee/60 text-sm mt-1">
+                      This information appears on your invoices and emails
                     </p>
                   </div>
-                </div>
-              </Field>
 
-              {/* Brand color */}
-              <Field label="Brand Color">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
+                  <Field label="Company Name" required>
                     <input
-                      type="color"
-                      value={form.brand_color}
-                      onChange={(e) =>
-                        setForm({ ...form, brand_color: e.target.value })
-                      }
-                      className="w-14 h-14 rounded-2xl border-2 border-coffee/10 cursor-pointer overflow-hidden"
-                      style={{ padding: 2 }}
+                      type="text"
+                      placeholder="Your Company Inc."
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      className={inputClass}
                     />
-                  </div>
-                  <input
-                    type="text"
-                    value={form.brand_color}
-                    onChange={(e) =>
-                      setForm({ ...form, brand_color: e.target.value })
-                    }
-                    placeholder="#3d2817"
-                    className={`${inputClass} font-mono uppercase max-w-40`}
-                  />
-                  <span className="text-sm text-coffee/50">
-                    Used on invoice accents
-                  </span>
+                  </Field>
+
+                  <Field label="Email">
+                    <input
+                      type="email"
+                      placeholder="billing@yourcompany.com"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  <Field label="Phone">
+                    <input
+                      type="tel"
+                      placeholder="+1 555 000 0000"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  <Field label="Address">
+                    <textarea
+                      placeholder="123 Main St, City, State, Country"
+                      value={form.address}
+                      onChange={(e) =>
+                        setForm({ ...form, address: e.target.value })
+                      }
+                      rows={3}
+                      className={`${inputClass} resize-none`}
+                    />
+                  </Field>
                 </div>
-              </Field>
-            </div>
-          )}
-
-          {activeTab === 'defaults' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-coffee">
-                  Invoice Defaults
-                </h2>
-                <p className="text-coffee/60 text-sm mt-1">
-                  These pre-fill when you create a new invoice
-                </p>
-              </div>
-
-              <Field label="Default Currency">
-                <select
-                  value={form.default_currency}
-                  onChange={(e) =>
-                    setForm({ ...form, default_currency: e.target.value })
-                  }
-                  className={inputClass}
-                >
-                  {Object.entries(CURRENCIES).map(
-                    ([code, info]: [string, any]) => (
-                      <option key={code} value={code}>
-                        {info.symbol} {code} — {info.name}
-                      </option>
-                    )
-                  )}
-                </select>
-              </Field>
-
-              <Field label="Default Tax Rate (%)">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.default_tax_rate}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      default_tax_rate: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  className={inputClass}
-                />
-                <p className="text-xs text-coffee/50 mt-2">
-                  Leave at 0 if you don&apos;t charge tax
-                </p>
-              </Field>
-
-              <Field label="Default Invoice Notes">
-                <textarea
-                  value={form.invoice_notes}
-                  onChange={(e) =>
-                    setForm({ ...form, invoice_notes: e.target.value })
-                  }
-                  rows={4}
-                  placeholder="Payment terms, thank you notes, etc."
-                  className={`${inputClass} resize-none`}
-                />
-              </Field>
-            </div>
-          )}
-
-          {/* Save bar */}
-          <div className="mt-8 pt-6 border-t border-coffee/10 flex items-center justify-between gap-4">
-            <p className="text-xs text-coffee/50">
-              Changes apply to all future invoices
-            </p>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="inline-flex items-center gap-2 bg-coffee text-cream px-6 py-3 rounded-xl font-medium hover:bg-coffee-deep transition-all hover:shadow-lg hover:shadow-coffee/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <>
-                  <span className="w-1.5 h-1.5 bg-cream rounded-full animate-pulse-dot" />
-                  Saving…
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save Changes
-                </>
               )}
-            </button>
-          </div>
+
+              {activeTab === 'branding' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="font-display text-2xl font-semibold text-coffee">
+                      Branding
+                    </h2>
+                    <p className="text-coffee/60 text-sm mt-1">
+                      Customize how your invoices look to clients
+                    </p>
+                  </div>
+
+                  <Field label="Logo">
+                    <div className="flex items-start gap-5">
+                      {form.logo_url ? (
+                        <div className="relative group">
+                          <div className="w-28 h-28 bg-cream rounded-2xl border border-coffee/10 flex items-center justify-center overflow-hidden p-3">
+                            <Image
+                              src={form.logo_url}
+                              alt="Company logo"
+                              width={112}
+                              height={112}
+                              className="object-contain max-h-full max-w-full"
+                              unoptimized
+                            />
+                          </div>
+                          <button
+                            onClick={removeLogo}
+                            className="absolute -top-2 -right-2 w-7 h-7 bg-coffee text-cream rounded-full flex items-center justify-center hover:bg-coffee-deep transition-colors shadow-md"
+                            aria-label="Remove logo"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-28 h-28 bg-cream border-2 border-dashed border-coffee/15 rounded-2xl flex items-center justify-center">
+                          <Building
+                            className="w-7 h-7 text-coffee/30"
+                            strokeWidth={1.5}
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex-1">
+                        <label className="inline-flex items-center gap-2 bg-cream hover:bg-tan-soft border border-coffee/10 px-4 py-2.5 rounded-xl text-sm font-medium text-coffee cursor-pointer transition-colors">
+                          <Upload className="w-3.5 h-3.5" />
+                          {uploading
+                            ? 'Uploading…'
+                            : form.logo_url
+                            ? 'Replace logo'
+                            : 'Upload logo'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            disabled={uploading}
+                            className="hidden"
+                          />
+                        </label>
+                        <p className="text-xs text-coffee/50 mt-3 leading-relaxed">
+                          PNG or JPG. Recommended size 400×400px. Max 2MB.
+                        </p>
+                      </div>
+                    </div>
+                  </Field>
+
+                  <Field label="Brand Color">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <input
+                          type="color"
+                          value={form.brand_color}
+                          onChange={(e) =>
+                            setForm({ ...form, brand_color: e.target.value })
+                          }
+                          className="w-14 h-14 rounded-2xl border-2 border-coffee/10 cursor-pointer overflow-hidden"
+                          style={{ padding: 2 }}
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={form.brand_color}
+                        onChange={(e) =>
+                          setForm({ ...form, brand_color: e.target.value })
+                        }
+                        placeholder="#3d2817"
+                        className={`${inputClass} font-mono uppercase max-w-40`}
+                      />
+                      <span className="text-sm text-coffee/50">
+                        Used on invoice accents
+                      </span>
+                    </div>
+                  </Field>
+                </div>
+              )}
+
+              {activeTab === 'defaults' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="font-display text-2xl font-semibold text-coffee">
+                      Invoice Defaults
+                    </h2>
+                    <p className="text-coffee/60 text-sm mt-1">
+                      These pre-fill when you create a new invoice
+                    </p>
+                  </div>
+
+                  <Field label="Default Currency">
+                    <select
+                      value={form.default_currency}
+                      onChange={(e) =>
+                        setForm({ ...form, default_currency: e.target.value })
+                      }
+                      className={inputClass}
+                    >
+                      {Object.entries(CURRENCIES).map(
+                        ([code, info]: [string, any]) => (
+                          <option key={code} value={code}>
+                            {info.symbol} {code} — {info.name}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </Field>
+
+                  <Field label="Default Tax Rate (%)">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.default_tax_rate}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          default_tax_rate: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className={inputClass}
+                    />
+                    <p className="text-xs text-coffee/50 mt-2">
+                      Leave at 0 if you don&apos;t charge tax
+                    </p>
+                  </Field>
+
+                  <Field label="Default Invoice Notes">
+                    <textarea
+                      value={form.invoice_notes}
+                      onChange={(e) =>
+                        setForm({ ...form, invoice_notes: e.target.value })
+                      }
+                      rows={4}
+                      placeholder="Payment terms, thank you notes, etc."
+                      className={`${inputClass} resize-none`}
+                    />
+                  </Field>
+                </div>
+              )}
+
+              {/* Save bar */}
+              <div className="mt-8 pt-6 border-t border-coffee/10 flex items-center justify-between gap-4">
+                <p className="text-xs text-coffee/50">
+                  Changes apply to all future invoices
+                </p>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 bg-coffee text-cream px-6 py-3 rounded-xl font-medium hover:bg-coffee-deep transition-all hover:shadow-lg hover:shadow-coffee/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? (
+                    <>
+                      <span className="w-1.5 h-1.5 bg-cream rounded-full animate-pulse-dot" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
