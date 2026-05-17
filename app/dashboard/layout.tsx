@@ -1,36 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
 import {
   LayoutDashboard,
-  Inbox,
-  FileText,
-  Wallet,
   Users,
   BarChart3,
+  Receipt,
+  Percent,
   Repeat,
   Bell,
+  Wallet,
+  Inbox,
   Settings,
   LogOut,
+  Plus,
   Menu,
-  X,
 } from 'lucide-react';
-
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/invoices/create', label: 'New Invoice', icon: FileText },
-  { href: '/dashboard/wallet', label: 'Wallet', icon: Wallet },
-  { href: '/dashboard/clients', label: 'Clients', icon: Users },
-  { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/dashboard/recurring', label: 'Recurring', icon: Repeat },
-  { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-  { href: '/dashboard/inbox', label: 'Inbox', icon: Inbox },
-];
 
 export default function DashboardLayout({
   children,
@@ -39,25 +29,52 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState('');
-  const [companyName, setCompanyName] = useState('');
+  const [overdueCount, setOverdueCount] = useState(0);
+  const [recurringCount, setRecurringCount] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    loadUser();
+    loadCounts();
   }, []);
 
-  const loadUser = async () => {
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const loadCounts = async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setUserEmail(user.email || '');
-      const { data: company } = await supabase
-        .from('companies')
-        .select('name')
-        .eq('user_id', user.id)
-        .single();
-      if (company) setCompanyName(company.name);
+    if (!user) return;
+    setUserEmail(user.email || '');
+
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!company) return;
+
+    const { data: invoicesData } = await supabase
+      .from('invoices')
+      .select('status, due_date, is_recurring, recurring_active')
+      .eq('company_id', company.id);
+
+    if (invoicesData) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const overdue = invoicesData.filter((inv) => {
+        if (inv.status === 'paid') return false;
+        const dueDate = new Date(inv.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate < today;
+      }).length;
+      const recurring = invoicesData.filter(
+        (inv) => inv.is_recurring && inv.recurring_active
+      ).length;
+      setOverdueCount(overdue);
+      setRecurringCount(recurring);
     }
   };
 
@@ -68,115 +85,166 @@ export default function DashboardLayout({
     router.refresh();
   };
 
+  const navItems = [
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/dashboard/inbox', icon: Inbox, label: 'Inbox' },
+    { href: '/dashboard/clients', icon: Users, label: 'Clients' },
+    { href: '/dashboard/expenses', icon: Receipt, label: 'Expenses' },
+    { href: '/dashboard/tax', icon: Percent, label: 'Tax' },
+    { href: '/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
+    {
+      href: '/dashboard/recurring',
+      icon: Repeat,
+      label: 'Recurring',
+      badge: recurringCount > 0 ? recurringCount : null,
+    },
+    {
+      href: '/dashboard/reminders',
+      icon: Bell,
+      label: 'Reminders',
+      badge: overdueCount > 0 ? overdueCount : null,
+      badgeColor: 'bg-red-500',
+    },
+    { href: '/dashboard/wallet', icon: Wallet, label: 'Wallet' },
+  ];
+
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard';
     return pathname.startsWith(href);
   };
 
   return (
-    <div className="min-h-screen bg-cream">
-      {/* ────────────── Mobile top bar ────────────── */}
-      <header className="lg:hidden sticky top-0 z-40 bg-cream/95 backdrop-blur-md border-b border-coffee/5">
-        <div className="px-5 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-cream flex">
+      <aside
+        className={`fixed lg:sticky top-0 left-0 z-40 h-screen w-72 bg-coffee text-cream flex flex-col transition-transform duration-300 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        <div className="px-6 py-7 border-b border-cream/10">
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <Image
+              src="/logo-light.png"
+              alt="Inv"
+              width={36}
+              height={42}
+              className="object-contain"
+              priority
+            />
+            <span className="font-display text-2xl font-semibold tracking-tight">
+              Inv
+            </span>
+          </Link>
+        </div>
+
+        <div className="px-4 pt-5">
+          <Link
+            href="/dashboard/invoices/create"
+            className="group flex items-center justify-center gap-2 w-full bg-cream text-coffee px-4 py-3 rounded-xl font-medium hover:bg-tan-soft transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Create Invoice
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`group flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-[15px] transition-all ${
+                  active
+                    ? 'bg-cream/10 text-cream font-medium'
+                    : 'text-cream/60 hover:text-cream hover:bg-cream/5'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <item.icon
+                    className="w-[18px] h-[18px]"
+                    strokeWidth={active ? 2 : 1.75}
+                  />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span
+                    className={`text-[11px] font-semibold px-1.5 min-w-[20px] h-5 rounded-full flex items-center justify-center ${
+                      item.badgeColor || 'bg-tan text-coffee'
+                    } ${item.badgeColor ? 'text-white' : ''}`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-cream/10 p-4 space-y-1">
+          <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[15px] transition-colors ${
+              isActive('/dashboard/settings')
+                ? 'bg-cream/10 text-cream font-medium'
+                : 'text-cream/60 hover:text-cream hover:bg-cream/5'
+            }`}
+          >
+            <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
+            Settings
+          </Link>
+
+          <div className="flex items-center gap-3 px-2 py-2">
+            <div className="w-9 h-9 rounded-full bg-tan flex items-center justify-center flex-shrink-0">
+              <span className="font-display text-coffee font-semibold text-sm">
+                {userEmail.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-cream truncate">{userEmail}</p>
+              <p className="text-xs text-cream/50">Signed in</p>
+            </div>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-[15px] text-cream/60 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut className="w-[18px] h-[18px]" strokeWidth={1.75} />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 bg-coffee/40 backdrop-blur-sm z-30 lg:hidden"
+        />
+      )}
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="lg:hidden sticky top-0 z-20 bg-cream/90 backdrop-blur-md border-b border-coffee/5 px-4 h-16 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Inv" width={28} height={32} className="object-contain" />
-            <span className="font-display text-xl font-semibold text-coffee">Inv</span>
+            <Image
+              src="/logo.png"
+              alt="Inv"
+              width={28}
+              height={32}
+              className="object-contain"
+            />
+            <span className="font-display text-xl font-semibold text-coffee">
+              Inv
+            </span>
           </Link>
           <button
-            onClick={() => setMobileOpen(!mobileOpen)}
+            onClick={() => setMobileOpen(true)}
             className="p-2 text-coffee"
-            aria-label="Menu"
+            aria-label="Open menu"
           >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <Menu className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Mobile menu drawer */}
-        {mobileOpen && (
-          <div className="border-t border-coffee/5 bg-cream">
-            <nav className="px-5 py-4 space-y-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                      active
-                        ? 'bg-coffee text-cream'
-                        : 'text-coffee/70 hover:bg-coffee/5 hover:text-coffee'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" strokeWidth={1.75} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-coffee/70 hover:bg-red-50 hover:text-red-700 transition-colors"
-              >
-                <LogOut className="w-4 h-4" strokeWidth={1.75} />
-                Sign Out
-              </button>
-            </nav>
-          </div>
-        )}
-      </header>
-
-      <div className="flex">
-        {/* ────────────── Desktop sidebar ────────────── */}
-        <aside className="hidden lg:flex flex-col w-64 min-h-screen sticky top-0 border-r border-coffee/5 bg-cream-soft">
-          <div className="p-6">
-            <Link href="/dashboard" className="flex items-center gap-2.5">
-              <Image src="/logo.png" alt="Inv" width={32} height={36} className="object-contain" />
-              <span className="font-display text-2xl font-semibold text-coffee">Inv</span>
-            </Link>
-          </div>
-
-          <nav className="flex-1 px-4 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    active
-                      ? 'bg-coffee text-cream'
-                      : 'text-coffee/70 hover:bg-coffee/5 hover:text-coffee'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" strokeWidth={1.75} />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="p-4 border-t border-coffee/5">
-            <div className="px-4 py-3 mb-2">
-              <p className="text-xs text-coffee/50 uppercase tracking-wider mb-1">Account</p>
-              <p className="text-sm font-medium text-coffee truncate">{companyName || 'Loading...'}</p>
-              <p className="text-xs text-coffee/60 truncate mt-0.5">{userEmail}</p>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-coffee/70 hover:bg-red-50 hover:text-red-700 transition-colors"
-            >
-              <LogOut className="w-4 h-4" strokeWidth={1.75} />
-              Sign Out
-            </button>
-          </div>
-        </aside>
-
-        {/* ────────────── Main content ────────────── */}
-        <main className="flex-1 min-w-0">
-          {children}
-        </main>
+        <main className="flex-1">{children}</main>
       </div>
     </div>
   );
